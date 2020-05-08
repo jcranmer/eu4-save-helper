@@ -1,0 +1,9 @@
+[package]
+name = "eu4-save-helper"
+version = "0.1.0"
+authors = ["Joshua Cranmer <Pidgeot18@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+auto-paradox = { version = "0.1", path = "auto-paradox" }
+zip = "0.5"

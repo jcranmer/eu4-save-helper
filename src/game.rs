@@ -1,0 +1,83 @@
+use std::any::{Any, TypeId};
+use std::cell::{RefCell, Ref};
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Result;
+use std::path::{Path, PathBuf};
+use crate::{
+    lexer::{Lexer, ParadoxScope, parse_file}
+};
+
+pub struct GameData {
+    game_path: PathBuf,
+    loaded_data: HashMap<TypeId, Box<dyn Any + 'static>>
+}
+
+fn read_game_file(path: &Path, data: &mut dyn ParadoxScope) -> Result<()> {
+    let file = File::open(path)?; 
+    let lexer = Lexer::new(file);
+    parse_file(lexer, data)?;
+    Ok(())
+}
+
+fn read_directories(game_path: &Path, path: &Path,
+                        data: &mut dyn ParadoxScope) -> Result<()> {
+    let file_dir = game_path.join(path);
+    for entry in file_dir.read_dir()? {
+        let entry = entry?;
+        let path = entry.path();
+        if !entry.metadata()?.is_file() {
+            eprintln!("Unexpected non-file in directory: {}",
+                      path.display());
+            continue;
+        } else if path.extension().is_none() {
+            eprintln!("Unexpected non-txt file in directory: {}",
+                      path.display());
+            continue;
+        } else if path.extension().unwrap() != "txt" {
+            eprintln!("Unexpected non-txt file in directory: {}",
+                      path.display());
+            continue;
+        }
+
+        read_game_file(&path, data)?;
+    }
+    Ok(())
+}
+
+macro_rules! cached_fn {
+    ($fn_name:ident : $t:ty = $e:expr) => {
+        pub fn $fn_name(&mut self) -> Result<&mut $t> {
+            self.get($e)
+        }
+    };
+}
+impl GameData {
+    pub fn load(game_dir: &Path) -> GameData {
+        GameData {
+            game_path: game_dir.to_path_buf(),
+            loaded_data: Default::default()
+        }
+    }
+
+    fn get<T: ParadoxScope + Default + 'static, P: AsRef<Path>>(
+            &mut self, path: P) -> Result<&mut T> {
+        let key = TypeId::of::<T>();
+        let entry = self.loaded_data.entry(key);
+        use std::collections::hash_map::Entry;
+        let boxed_value = match entry {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                let mut val: Box<T> = Box::new(Default::default());
+                read_directories(&self.game_path, path.as_ref(), val.as_mut())?;
+                entry.insert(val)
+            }
+        };
+        let inner = boxed_value.as_mut().downcast_mut::<T>()
+            .expect("Should be the same type as we put in it!");
+        Ok(inner)
+    }
+
+    cached_fn!(religions: crate::eu4::ReligionList = "common/religions");
+    cached_fn!(events: crate::events::EventList = "events");
+}
