@@ -1,0 +1,336 @@
+use std::io::Read;
+use thiserror::Error;
+
+// There's no good documentation on Paradox's file format here. Most of this
+// information is reverse-engineered from the existing files. In addition,
+// there may be subtle differences between different engine versions, and hence
+// between games (and since I don't own all of them, I can't test all of the
+// issues here).
+
+pub enum UnparsedValue<'a> {
+    Complex {
+        parser: &'a mut Parser,
+        level: u32
+    },
+    Simple(String)
+}
+
+impl <'a> UnparsedValue<'a> {
+    fn make_complex(parser: &'a mut Parser) -> Self {
+        Self::Complex {
+            level: parser.depth,
+            parser
+        }
+    }
+
+    pub fn into_string(self) -> Result<String, ParseError> {
+        match self {
+            Self::Complex{ parser: _, level: _ } =>
+                Err(ParseError::Parse(Token::LBrace)),
+            Self::Simple(s) => Ok(s)
+        }
+    }
+
+    pub fn next_key_value_pair(&mut self) -> Result<Option<ValuePair>, ParseError> {
+        let (parser, level) = match self {
+            Self::Complex { parser, level } => (parser, *level),
+            Self::Simple(s) =>
+                return Err(ParseError::Parse(Token::String(s.clone())))
+        };
+
+        if level > parser.depth {
+            Ok(None)
+        } else {
+            parser.get_value()
+        }
+    }
+}
+
+pub type ValuePair<'a> = (Option<String>, UnparsedValue<'a>);
+
+pub trait ParadoxParse {
+    fn read_from(&mut self, value: UnparsedValue<'_>) -> Result<(), ParseError>;
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Token {
+    LBrace,
+    RBrace,
+    Eq,
+    // XXX: simple value type is probably better
+    String(String)
+}
+
+pub trait Lexer {
+    fn get_token(&mut self) -> Result<Option<Token>, ParseError>;
+    fn get_location_info(&self) -> String;
+}
+
+pub struct TextLexer {
+    reader: std::io::Bytes<Box<dyn Read>>,
+    saved_char: Option<u8>,
+    filename: String,
+    line: u32,
+    column: u32
+}
+
+impl TextLexer {
+    /// Create a lexer from the given input file. Pass a filename in as well, to
+    /// give better error messages.
+    pub fn new(reader: Box<dyn Read>, filename: String) -> Self {
+        TextLexer { reader: reader.bytes(), filename, line: 1, column: 1,
+            saved_char: None
+        }
+    }
+
+    fn get_char(&mut self) -> Result<Option<u8>, std::io::Error> {
+        if let Some(ch) = self.saved_char {
+            self.saved_char = None;
+            Ok(Some(ch))
+        } else {
+            let ch = self.reader.next();
+            match ch {
+                Some(Ok(b'\n')) => {
+                    self.line += 1; self.column = 1;
+                    Ok(Some(b'\n'))
+                },
+                Some(Ok(ch)) => {
+                    self.column += 1;
+                    Ok(Some(ch))
+                },
+                Some(Err(err)) => {
+                    Err(err)
+                },
+                None => {
+                    Ok(None)
+                },
+            }
+        }
+    }
+
+    fn unget(&mut self, ch: u8) {
+        assert!(self.saved_char.is_none(), "Only one char can be ungotten");
+        self.saved_char = Some(ch);
+    }
+
+    /// Read until the end of line of a comment.
+    fn skip_comment(&mut self) -> Result<(), std::io::Error> {
+        loop {
+            match self.get_char()? {
+                Some(b'\n') | None => return Ok(()),
+                _ => continue
+            }
+        }
+    }
+
+    /// Read the tail of a quoted string.
+    fn read_qstring(&mut self) -> Result<String, ParseError> {
+        let mut s = String::new();
+        loop {
+            match self.get_char()? {
+                Some(b'"') => return Ok(s),
+                Some(ch) => s.push(ch as char),
+                None => return Err(
+                    ParseError::Lexer("could not find end of string".into()))
+            }
+        }
+    }
+
+    /// Read an unparsed full token.
+    fn read_unknown(&mut self, init_char: u8) -> Result<String, ParseError> {
+        let mut s = String::new();
+        s.push(init_char as char);
+        loop {
+            match self.get_char()? {
+                Some(ch) if b"#{=}\"".contains(&ch) => {
+                    self.unget(ch);
+                    return Ok(s);
+                },
+                None => return Ok(s),
+                Some(ch) if Self::is_whitespace(ch) => return Ok(s),
+                Some(ch) => s.push(ch as char),
+            }
+        }
+    }
+
+    /// Check if the given character is whitespace, according to Paradox.
+    fn is_whitespace(ch: u8) -> bool {
+        ch == b' ' || ch == b'\t' || ch == b'\r' || ch == b'\n'
+    }
+}
+
+impl Lexer for TextLexer {
+    fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
+        loop {
+            match self.get_char()? {
+                None => return Ok(None),
+                Some(ch) if Self::is_whitespace(ch) => continue,
+                Some(b'#') => self.skip_comment()?,
+                Some(b'{') => return Ok(Some(Token::LBrace)),
+                Some(b'}') => return Ok(Some(Token::RBrace)),
+                Some(b'=') => return Ok(Some(Token::Eq)),
+                Some(b'"') =>
+                    return Ok(Some(Token::String(self.read_qstring()?))),
+                Some(ch) =>
+                    return Ok(Some(Token::String(self.read_unknown(ch)?)))
+            }
+        }
+    }
+
+    fn get_location_info(&self) -> String {
+        format!("{}:{}:{}", self.filename, self.line, self.column)
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum ParseError {
+    #[error("error reading file")]
+    Io(#[from] std::io::Error),
+    #[error("lexing error: {0}")]
+    Lexer(String),
+    #[error("unexpected token: {0:?}")]
+    Parse(Token),
+    #[error("unexpected eof")]
+    Eof,
+    #[error("error reading type")]
+    Conversion(#[from] Box<dyn std::error::Error + 'static>),
+    #[error("value error: {0}")]
+    Constraint(String)
+}
+
+pub struct Parser {
+    lexer: Box<dyn Lexer>,
+    depth: u32,
+    saved_token: Option<Token>
+}
+
+impl Parser {
+    pub fn new(lexer: Box<dyn Lexer>) -> Parser {
+        Parser { lexer, depth: 0, saved_token: None }
+    }
+
+    pub fn parse<T: ParadoxParse>(mut self,
+                                  result: &mut T) -> Result<(), ParseError> {
+        result.read_from(UnparsedValue::make_complex(&mut self))
+    }
+
+    fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
+        if self.saved_token.is_some() {
+            Ok(self.saved_token.take())
+        } else {
+            self.lexer.get_token()
+        }
+    }
+
+    fn unget(&mut self, token: Token) {
+        assert!(self.saved_token.is_none(), "Can only save one token");
+        self.saved_token = Some(token);
+    }
+
+    fn get_value(&mut self) -> Result<Option<ValuePair>, ParseError> {
+        match self.get_token()? {
+            None if self.depth == 0 => Ok(None),
+            None => Err(ParseError::Eof),
+            Some(Token::RBrace) if self.depth > 0 => {
+                self.depth -= 1;
+                Ok(None)
+            },
+            Some(Token::LBrace) => {
+                self.depth += 1;
+                Ok(Some((None, UnparsedValue::make_complex(self))))
+            },
+            Some(Token::String(key)) => {
+                Ok(Some(match self.get_token()? {
+                    // EOF: it's okay if we're at top depth.
+                    None if self.depth == 0 =>
+                        (None, UnparsedValue::Simple(key)),
+                    None => return Err(ParseError::Eof),
+                    
+                    // Eq: we are to be followed by a value.
+                    Some(Token::Eq) => {
+                        (Some(key), match self.get_token()? {
+                            Some(Token::String(value)) =>
+                                UnparsedValue::Simple(value),
+                            Some(Token::LBrace) => {
+                                self.depth += 1;
+                                UnparsedValue::make_complex(self)
+                            },
+                            None => return Err(ParseError::Eof),
+                            Some(t) => return Err(ParseError::Parse(t))
+                        })
+                    },
+
+                    // For anything else, unget the character and return the
+                    // value as an untyped thing.
+                    Some(t) => {
+                        self.unget(t);
+                        (None, UnparsedValue::Simple(key))
+                    }
+                }))
+            },
+            Some(t) => Err(ParseError::Parse(t))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn make_reader(input: &'static [u8]) -> TextLexer {
+        TextLexer::new(Box::new(input), "input".into())
+    }
+
+    fn check_tokens(mut lexer: impl Lexer, vec: Vec<Token>) {
+        for token in vec {
+            assert_eq!(lexer.get_token().unwrap(), Some(token));
+        }
+        assert_eq!(lexer.get_token().unwrap(), None);
+    }
+
+    #[test]
+    fn test_lexer() {
+        let lexer = make_reader(b"1.0#");
+        check_tokens(lexer, vec![Token::String("1.0".into())]);
+
+        let lexer = make_reader(b"# This is a comment\n1.0");
+        check_tokens(lexer, vec![Token::String("1.0".into())]);
+        
+        let lexer = make_reader(b"-5={ 1} \"inner\"");
+        check_tokens(lexer, vec![
+            Token::String("-5".into()),
+            Token::Eq,
+            Token::LBrace,
+            Token::String("1".into()),
+            Token::RBrace,
+            Token::String("inner".into())
+        ]);
+    }
+
+    #[test]
+    fn test_parser() -> Result<(), ParseError> {
+        let mut res : HashMap<String, i32> = Default::default();
+        let lexer = make_reader(b"a=1 b=2");
+        Parser::new(Box::new(lexer))
+            .parse(&mut res)?;
+        assert_eq!(*res.get("a").unwrap(), 1);
+        assert_eq!(*res.get("b").unwrap(), 2);
+        assert_eq!(res.iter().len(), 2);
+
+        let mut res : HashMap<String, Vec<i32>> = Default::default();
+        let lexer = make_reader(b"a={1 2 3}");
+        Parser::new(Box::new(lexer))
+            .parse(&mut res)?;
+        assert_eq!(*res.get("a").unwrap(), vec![1, 2, 3]);
+        assert_eq!(res.iter().len(), 1);
+
+        let mut res : Vec<Vec<Vec<i32>>> = Default::default();
+        let lexer = make_reader(b"{{1 2} {3 4} {5 6}}");
+        Parser::new(Box::new(lexer))
+            .parse(&mut res)?;
+        assert_eq!(res, vec![vec![vec![1, 2], vec![3, 4], vec![5, 6]]]);
+
+        Ok(())
+    }
+}

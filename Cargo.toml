@@ -7,3 +7,9 @@ edition = "2018"
 [dependencies]
 auto-paradox = { version = "0.1", path = "auto-paradox" }
 zip = "0.5"
+
+[workspace]
+members = [
+    "auto-paradox",
+    "paradox"
+]
