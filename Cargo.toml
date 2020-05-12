@@ -11,5 +11,6 @@ zip = "0.5"
 [workspace]
 members = [
     "auto-paradox",
-    "paradox"
+    "paradox",
+    "paradox-derive"
 ]

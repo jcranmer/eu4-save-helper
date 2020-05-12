@@ -44,6 +44,11 @@ impl <'a> UnparsedValue<'a> {
             parser.get_value()
         }
     }
+
+    pub fn drain(self) -> Result<(), ParseError> {
+        let mut discard = ();
+        discard.read_from(self)
+    }
 }
 
 pub type ValuePair<'a> = (Option<String>, UnparsedValue<'a>);

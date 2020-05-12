@@ -74,3 +74,23 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
     }
 }
 
+impl ParadoxParse for () {
+    fn read_from(&mut self,
+                 mut val: UnparsedValue<'_>) -> Result<(), ParseError> {
+        match val {
+            UnparsedValue::Simple(_) => Ok(()),
+            UnparsedValue::Complex { parser: _, level: _ } => {
+                loop {
+                    let next_pair = val.next_key_value_pair()?;
+                    match next_pair {
+                        None => return Ok(()),
+                        Some((_, v)) => {
+                            let mut parsed = ();
+                            parsed.read_from(v)?;
+                        },
+                    }
+                }
+            }
+        }
+    }
+}
