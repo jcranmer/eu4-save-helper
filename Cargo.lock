@@ -56,6 +56,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "eu4"
+version = "0.1.0"
+dependencies = [
+ "paradox 0.1.0",
+ "paradox-derive 0.1.0",
+]
+
+[[package]]
 name = "eu4-save-helper"
 version = "0.1.0"
 dependencies = [

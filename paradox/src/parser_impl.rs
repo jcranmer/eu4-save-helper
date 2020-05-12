@@ -29,6 +29,21 @@ from_string!{f32}
 from_string!{f64}
 from_string!{String}
 
+impl ParadoxParse for bool {
+    fn read_from(&mut self, val: UnparsedValue) -> Result<(), ParseError> {
+        let string = &val.into_string()?;
+        if string == "yes" {
+            *self = true;
+        } else if string == "no" {
+            *self = false;
+        } else {
+            return Err(ParseError::Constraint(
+                format!("Expected bool string, found {}", string)));
+        }
+        Ok(())
+    }
+}
+
 impl <T: ParadoxParse + Default> ParadoxParse for Vec<T> {
     fn read_from(&mut self,
                  mut val: UnparsedValue<'_>) -> Result<(), ParseError> {

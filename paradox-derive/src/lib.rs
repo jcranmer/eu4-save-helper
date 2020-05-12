@@ -19,11 +19,33 @@ struct FieldHandler {
     body: TokenStream
 }
 
+fn has_tag(field: &Field, tag: &'static str) -> bool {
+    field.attrs.iter()
+        .any(|attr| attr.path.is_ident(tag))
+}
+
 fn handle_field(field: &Field) -> FieldHandler {
     let name = &field.ident;
+    let field_match = quote_spanned!{field.span() =>
+        Some((Some(key), value)) if key == stringify!(#name)
+    };
+    let parsee = quote_spanned!{field.span() =>
+        let parsee : &mut dyn paradox::ParadoxParse
+    };
+    let get_parsee = if has_tag(field, "repeated") {
+        quote_spanned!{field.span() =>
+            self.#name.push(Default::default());
+            #parsee = self.#name.last_mut().unwrap();
+        }
+    } else {
+        quote_spanned!{field.span() =>
+            #parsee = &mut self.#name;
+        }
+    };
     let body = quote_spanned!{field.span() =>
-        Some((Some(key), value)) if key == stringify!(#name) => {
-            (self.#name as paradox::ParadoxParse).read_from(value)?;
+        #field_match => {
+            #get_parsee
+            parsee.read_from(value)?;
         }
     };
 
@@ -41,7 +63,7 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     let match_statements = body.iter().map(|f| &f.body);
     let default_body = quote! {
         Some((Some(key), val)) => {
-            println!(strinfigy!(#name), "/{}", key);
+            println!("{}/{}", stringify!(#name), key);
             val.drain()?;
         },
     };
@@ -49,7 +71,7 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     let expanded = quote! {
         impl paradox::ParadoxParse for #name {
             fn read_from(&mut self, mut val: paradox::UnparsedValue<'_>)
-                    -> Result<(), ParseError> {
+                    -> Result<(), paradox::ParseError> {
                 loop {
                     let next_pair = val.next_key_value_pair()?;
                     match next_pair {
@@ -71,7 +93,7 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     Ok(TokenStream::from(expanded))
 }
 
-#[proc_macro_derive(ParadoxParse)]
+#[proc_macro_derive(ParadoxParse, attributes(repeated))]
 pub fn derive_paradox_parse(input: proc_macro::TokenStream)
         -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
