@@ -133,7 +133,7 @@ impl GameData {
         Ok(inner)
     }
 
-    cached_fn!(old religions: crate::eu4::ReligionList = "common/religions");
+    cached_fn!(religions: eu4::ReligionList = "common/religions");
     cached_fn!(old events: crate::events::EventList = "events");
     cached_fn!(trade: eu4::TradeNodeList = "common/tradenodes");
 }

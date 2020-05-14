@@ -1,6 +1,8 @@
 use std::io::Read;
 use thiserror::Error;
 
+const ERR_ON_INVALID_INPUT : bool = true;
+
 // There's no good documentation on Paradox's file format here. Most of this
 // information is reverse-engineered from the existing files. In addition,
 // there may be subtle differences between different engine versions, and hence
@@ -48,6 +50,18 @@ impl <'a> UnparsedValue<'a> {
     pub fn drain(self) -> Result<(), ParseError> {
         let mut discard = ();
         discard.read_from(self)
+    }
+
+    pub fn validation_error(&self, class_name: &'static str, field: &str,
+                            message: &str,
+                            fatal: bool) -> Result<(), ParseError> {
+        let msg = format!("{}/{}: {}", class_name, field, message);
+        if fatal || ERR_ON_INVALID_INPUT {
+            Err(ParseError::Constraint(msg))
+        } else {
+            eprintln!("warning: {}", msg);
+            Ok(())
+        }
     }
 }
 
@@ -250,7 +264,7 @@ impl Parser {
                     None if self.depth == 0 =>
                         (None, UnparsedValue::Simple(key)),
                     None => return Err(ParseError::Eof),
-                    
+
                     // Eq: we are to be followed by a value.
                     Some(Token::Eq) => {
                         (Some(key), match self.get_token()? {
@@ -301,7 +315,7 @@ mod tests {
 
         let lexer = make_reader(b"# This is a comment\n1.0");
         check_tokens(lexer, vec![Token::String("1.0".into())]);
-        
+
         let lexer = make_reader(b"-5={ 1} \"inner\"");
         check_tokens(lexer, vec![
             Token::String("-5".into()),

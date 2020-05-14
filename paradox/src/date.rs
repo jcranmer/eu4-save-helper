@@ -34,7 +34,16 @@ pub struct ParseDateError {
     msg: &'static str
 }
 
+impl std::error::Error for ParseDateError {
+}
+
 impl std::fmt::Debug for ParseDateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.msg)
+    }
+}
+
+impl std::fmt::Display for ParseDateError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.msg)
     }

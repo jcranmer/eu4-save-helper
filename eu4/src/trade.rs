@@ -1,7 +1,5 @@
+use crate::{ProvinceRef, RgbColor};
 use paradox::ParadoxParse;
-
-type ProvinceRef = u32; // XXX: LIES
-type RgbColor = Vec<u32>; // XXX: Lies
 
 #[derive(ParadoxParse, Default, Debug)]
 pub struct TradeNode {
