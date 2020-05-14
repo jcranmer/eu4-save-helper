@@ -7,7 +7,6 @@ use std::path::Path;
 use paradox::Date;
 mod fixed; use fixed::FixedPoint;
 
-mod eu4;
 mod events;
 mod game;
 mod gamestate;

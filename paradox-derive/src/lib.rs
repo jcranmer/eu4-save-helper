@@ -42,6 +42,17 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
         return FieldHandler { name, body, check_name: None, is_default: true };
     }
 
+    // This type of field sets the default body instead.
+    if has_tag(field, "effects") {
+        let body = quote_spanned!{ field.span() =>
+            Some((Some(key), value)) => {
+                use std::convert::TryInto;
+                self.#name.push((key, value).try_into()?);
+            },
+        };
+        return FieldHandler { name, body, check_name: None, is_default: true };
+    }
+
     let check_name = if has_tag(field, "optional") || has_tag(field, "repeated") {
         None
     } else {
@@ -149,7 +160,7 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     Ok(TokenStream::from(expanded))
 }
 
-#[proc_macro_derive(ParadoxParse, attributes(collect, optional, repeated))]
+#[proc_macro_derive(ParadoxParse, attributes(collect, effects, optional, repeated))]
 pub fn derive_paradox_parse(input: proc_macro::TokenStream)
         -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
