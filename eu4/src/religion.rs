@@ -83,22 +83,7 @@ pub struct ReligiousSchool {
     pub invite_scholar_modifier_display: (),
     pub picture: String, // XXX: gfx reference or something?
 
-    //#[effects]
-    //pub effects: Vec<CountryEffect>
+    #[effects]
+    pub effects: Vec<crate::effects::CountryEffect>
 }
 
-/*
-#[derive(Default, Debug)]
-pub struct CountryEffect {
-    effect: &'static str,
-}
-
-impl std::convert::TryFrom<(String, paradox::UnparsedValue<'_>)> for CountryEffect {
-    type Error = paradox::ParseError;
-
-    fn try_from(kv_pair: (String, paradox::UnparsedValue<'_>)) -> Result<Self, paradox::ParseError> {
-        match &kv_pair.0 {
-            "adm_tech_cost_modifier" =>
-        }
-    }
-}*/

@@ -1,5 +1,7 @@
 extern crate proc_macro;
 
+mod tables;
+
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use syn::spanned::Spanned;
@@ -169,6 +171,12 @@ pub fn derive_paradox_parse(input: proc_macro::TokenStream)
         .into()
 }
 
+#[proc_macro]
+pub fn effect_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let table = parse_macro_input!(input as tables::ScopedEffectList);
+    table.generate_code().into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,6 +186,5 @@ mod tests {
         let input = quote!{ struct Foo { field: u32 }};
         let input = syn::parse2::<DeriveInput>(input).unwrap();
         println!("{}", implement_parse_method(&input).unwrap());
-        unimplemented!();
     }
 }
