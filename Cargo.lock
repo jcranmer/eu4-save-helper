@@ -68,6 +68,8 @@ name = "eu4-save-helper"
 version = "0.1.0"
 dependencies = [
  "auto-paradox 0.1.0",
+ "eu4 0.1.0",
+ "paradox 0.1.0",
  "zip 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -90,6 +92,7 @@ dependencies = [
 name = "paradox"
 version = "0.1.0"
 dependencies = [
+ "paradox-derive 0.1.0",
  "thiserror 1.0.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

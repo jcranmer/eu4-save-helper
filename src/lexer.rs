@@ -57,7 +57,7 @@ impl From<Token> for i32 {
     }
 }
 
-impl From<Token> for crate::fixed::FixedPoint {
+impl From<Token> for crate::FixedPoint {
     fn from(t: Token) -> Self {
         match t {
             Token::Float(f) => Self::from(f),
@@ -66,8 +66,8 @@ impl From<Token> for crate::fixed::FixedPoint {
     }
 }
 
-impl From<Token> for crate::date::Date {
-    fn from(t: Token) -> crate::date::Date {
+impl From<Token> for crate::Date {
+    fn from(t: Token) -> crate::Date {
         let s = match t {
             Token::String(s) => s,
             Token::Integer(v) => v.to_string(),

@@ -7,6 +7,15 @@
 //! * An implementation of the fixed-point arithmetic they use.
 //! * A parser for their internal format.
 
+// Set up #[derive(ParadoxParse)] support.
+#[allow(unused_imports)]
+#[macro_use]
+extern crate paradox_derive;
+pub use paradox_derive::*;
+
+mod date;
 mod parser;
 mod parser_impl;
+
+pub use date::*;
 pub use parser::*;
