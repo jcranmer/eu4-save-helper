@@ -389,8 +389,3 @@ fn parse<R: Read>(lexer: &mut Lexer<R>, scope: &mut ParadoxScope, depth: usize) 
 pub fn parse_file<R: Read>(mut lexer: Lexer<R>, scope: &mut ParadoxScope) -> Result<()> {
     parse(&mut lexer, scope, 0)
 }
-
-pub fn make_scope<R: Read, S: ParadoxScope + Default>(lexer: Lexer<R>) -> Result<S> {
-    let mut scope : S = Default::default();
-    parse_file(lexer, &mut scope).map(|_| scope)
-}
