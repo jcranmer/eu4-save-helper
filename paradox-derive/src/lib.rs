@@ -4,8 +4,9 @@ mod tables;
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
+use quote::ToTokens;
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, Data, DeriveInput, Field};
+use syn::{parse_macro_input, Data, DeriveInput, Field, Type};
 
 #[derive(Debug)]
 struct Error(TokenStream);
@@ -55,6 +56,9 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
         return FieldHandler { name, body, check_name: None, is_default: true };
     }
 
+    // Handle optional and repeated conditions: we build a list of boolean
+    // checks, one for each field, to let us know how many times we've seen
+    // them before.
     let check_name = if has_tag(field, "optional") || has_tag(field, "repeated") {
         None
     } else {
@@ -62,19 +66,6 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     };
     let field_match = quote_spanned!{field.span() =>
         Some((Some(key), value)) if key == stringify!(#name)
-    };
-    let parsee = quote_spanned!{field.span() =>
-        let parsee : &mut dyn paradox::ParadoxParse
-    };
-    let get_parsee = if has_tag(field, "repeated") {
-        quote_spanned!{field.span() =>
-            self.#name.push(Default::default());
-            #parsee = self.#name.last_mut().unwrap();
-        }
-    } else {
-        quote_spanned!{field.span() =>
-            #parsee = &mut self.#name;
-        }
     };
     let check_presence = if let Some(ref check_name) = check_name {
         Some(quote_spanned!{field.span() =>
@@ -87,11 +78,60 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     } else {
         None
     };
-    let body = quote_spanned!{field.span() =>
-        #field_match => {
-            #check_presence
-            #get_parsee
-            parsee.read_from(value)?;
+
+    // Get the type as a string. This isn't fully accurate, but it's good enough
+    // for any checks we need to do.
+    let ty = match &field.ty {
+        &Type::Path(ref p) => p.path.clone().into_token_stream().to_string(),
+        _ => "".into()
+    };
+
+    // Build the body of the match.
+    let body = if ty.starts_with("Vec <") && ty.ends_with("Effect >") {
+        // List of effects are handled with a special parser, due to issues
+        // doing so with other types.
+        quote_spanned!{field.span() =>
+            #field_match => {
+                #check_presence
+                let vec = &mut self.#name;
+                loop {
+                    let next_pair = val.next_key_value_pair()?;
+                    match next_pair {
+                        None => break,
+                        Some((None, value)) => {
+                            value.validation_error(
+                                stringify!(#class), "", "bad key", false)?;
+                            value.drain()?;
+                        },
+                        Some((Some(key), value)) => {
+                            use std::convert::TryInto;
+                            vec.push((key, value).try_into()?);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Regular types. Build up a check here.
+        let parsee = quote_spanned!{field.span() =>
+            let parsee : &mut dyn paradox::ParadoxParse
+        };
+        let get_parsee = if has_tag(field, "repeated") {
+            quote_spanned!{field.span() =>
+                self.#name.push(Default::default());
+                #parsee = self.#name.last_mut().unwrap();
+            }
+        } else {
+            quote_spanned!{field.span() =>
+                #parsee = &mut self.#name;
+            }
+        };
+        quote_spanned!{field.span() =>
+            #field_match => {
+                #check_presence
+                #get_parsee
+                parsee.read_from(value)?;
+            }
         }
     };
 

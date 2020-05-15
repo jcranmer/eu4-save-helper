@@ -51,6 +51,12 @@ pub struct Religion {
     #[optional]
     pub holy_sites: Vec<ProvinceRef>,
 
+    pub country: Vec<crate::effects::CountryEffect>,
+    #[optional]
+    pub country_as_secondary: Vec<crate::effects::CountryEffect>,
+    #[optional]
+    pub province: Vec<crate::effects::ProvinceEffect>,
+
     #[optional] pub aspects_name: LocalizationKey,
     #[optional] pub reform_tooltip: LocalizationKey,
 

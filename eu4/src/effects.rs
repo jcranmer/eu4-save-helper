@@ -130,7 +130,7 @@ paradox::effect_list! {
     effect(Country, movement_speed_in_fleet_modifier, FixedPoint);
 
     effect(Country, diplomats, u32);
-    //effect(Country, diplomatic_reputation, type(1));
+    effect(Country, diplomatic_reputation, FixedPoint);
     //effect(Country, diplomatic_upkeep, type(1));
     effect(Country, envoy_travel_time, FixedPoint);
     effect(Country, fabricate_claims_cost, FixedPoint);
@@ -221,7 +221,7 @@ paradox::effect_list! {
     effect(Country, same_culture_advisor_cost, FixedPoint);
     effect(Country, promote_culture_cost, FixedPoint);
 
-    //effect(Country, global_unrest, type(-2));
+    effect(Country, global_unrest, FixedPoint);
     effect(Country, stability_cost_modifier, FixedPoint);
     effect(Country, global_autonomy, FixedPoint);
     //effect(Country, min_autonomy, type(50));
@@ -262,7 +262,7 @@ paradox::effect_list! {
 
     effect(Country, colonists, u32);
     effect(Country, colonist_placement_chance, FixedPoint);
-    //effect(Country, global_colonial_growth, type(10));
+    effect(Country, global_colonial_growth, i32);
     effect(Country, range, FixedPoint);
     effect(Country, native_uprising_chance, FixedPoint);
     effect(Country, native_assimilation, FixedPoint);

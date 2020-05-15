@@ -10,12 +10,12 @@ mod kw {
 }
 
 struct Effect {
-    effect_token: kw::effect,
+    _effect_token: kw::effect,
     paren_token: token::Paren,
     scope: Ident,
-    comma1_token: Token![,],
+    _comma1_token: Token![,],
     name: Ident,
-    comma2_token: Token![,],
+    _comma2_token: Token![,],
     ty: Type
 }
 
@@ -23,12 +23,12 @@ impl Parse for Effect {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
         Ok(Effect {
-            effect_token: input.parse()?,
+            _effect_token: input.parse()?,
             paren_token: parenthesized!(content in input),
             scope: content.parse()?,
-            comma1_token: content.parse()?,
+            _comma1_token: content.parse()?,
             name: content.parse()?,
-            comma2_token: content.parse()?,
+            _comma2_token: content.parse()?,
             ty: content.parse()?
         })
     }
@@ -44,7 +44,7 @@ impl Effect {
     fn make_match_clause(&self) -> TokenStream {
         let name = &self.name;
         let ty = &self.ty;
-        quote_spanned! { self.paren_token.span => 
+        quote_spanned! { self.paren_token.span =>
             key if key == stringify!(#name) => {
                 let mut parsee : #ty = Default::default();
                 parsee.read_from(value)?;
