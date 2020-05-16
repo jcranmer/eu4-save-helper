@@ -29,7 +29,7 @@ pub struct ReligiousGroup {
     pub religious_schools: HashMap<String, ReligiousSchool>,
 
     #[collect]
-    pub religions: Vec<Religion>
+    pub religions: HashMap<String, Religion>
 }
 
 #[derive(ParadoxParse, Default, Debug)]

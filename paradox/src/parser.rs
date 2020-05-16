@@ -344,7 +344,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    fn make_reader(input: &'static [u8]) -> TextLexer {
+    fn make_reader(input: &'static [u8]) -> TextLexer<&'static [u8]> {
         TextLexer::new(input, "input".into())
     }
 

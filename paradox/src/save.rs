@@ -41,7 +41,7 @@ impl <R: Read> BinaryLexer<R> {
                 // Fixed point notation.
                 let val = self.reader.read_i32::<LittleEndian>()?;
                 self.offset += 4;
-                Token::String(format!("{}.{:03}", val / 1000, val % 1000))
+                Token::String(format!("{}.{:03}", val / 1000, val.abs() % 1000))
             },
             0x000e => {
                 let val = self.reader.read_u8()?;

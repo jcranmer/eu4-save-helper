@@ -45,10 +45,15 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     if has_tag(field, "collect") {
         let body = quote_spanned!{ field.span() =>
             Some((Some(key), value)) => {
-                self.#name.push(Default::default());
-                let parsee : &mut dyn paradox::ParadoxParse =
-                    self.#name.last_mut().unwrap();
-                parsee.read_from(value)?;
+                use std::collections::hash_map::Entry;
+                let entry = self.#name.entry(key);
+                match entry {
+                    Entry::Occupied(ref e) =>
+                        value.validation_error(stringify!(#class), &e.key(),
+                            "multiple definitions found", false)?,
+                    _ => ()
+                }
+                entry.or_default().read_from(value)?;
             },
         };
         return FieldHandler { name, body, check_name: None, is_default: true };
@@ -225,6 +230,20 @@ pub fn derive_paradox_parse(input: proc_macro::TokenStream)
         .into()
 }
 
+/// Generate a set of effect enums and associated parsing.
+///
+/// This macro takes as input a table of effects, such as:
+/// ```rust
+///   effect_list!{
+///     effect(Country, country_modifier, FixedPoint);
+///   }
+/// ```
+///
+/// The first parameter is the kind of scope that the modifier applies to.
+///
+/// The second parameter is the name of modifier.
+///
+/// The third and final parameter is the type of the modifier.
 #[proc_macro]
 pub fn effect_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let table = parse_macro_input!(input as tables::ScopedEffectList);
