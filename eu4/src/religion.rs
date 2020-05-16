@@ -47,6 +47,9 @@ pub struct Religion {
     pub allowed_conversion: Vec<String>, // XXX: ReligionRef
 
     #[optional]
+    pub harmonized_modifier: String, // XXX: EventModifier
+
+    #[optional]
     pub date: Date,
 
     #[optional]

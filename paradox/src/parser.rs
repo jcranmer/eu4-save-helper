@@ -1,4 +1,6 @@
 use std::io::Read;
+use std::fs::File;
+use std::path::Path;
 use thiserror::Error;
 
 const ERR_ON_INVALID_INPUT : bool = true;
@@ -228,8 +230,8 @@ impl Parser {
         Parser { lexer, depth: 0, saved_token: None }
     }
 
-    pub fn parse<T: ParadoxParse>(mut self,
-                                  result: &mut T) -> Result<(), ParseError> {
+    pub fn parse(mut self,
+                 result: &mut dyn ParadoxParse) -> Result<(), ParseError> {
         result.read_from(UnparsedValue::make_complex(&mut self))
             .or_else(|err| {
                 eprintln!("Error at {}", self.lexer.get_location_info());
@@ -301,6 +303,40 @@ impl Parser {
             Some(t) => Err(ParseError::Parse(t))
         }
     }
+}
+
+/// Load an entire directory of parseable files.
+///
+/// All of the entries will be loaded in alphabetical order.
+pub fn load_directory(path: &Path,
+                      data: &mut dyn ParadoxParse) -> Result<(), ParseError> {
+    let mut files : Vec<_> = Default::default();
+    for entry in path.read_dir()? {
+        let entry = entry?;
+        let path = entry.path();
+        if !entry.metadata()?.is_file() {
+            eprintln!("Unexpected non-file in directory: {}",
+                      path.display());
+            continue;
+        } else if path.extension().is_none() {
+            eprintln!("Unexpected non-txt file in directory: {}",
+                      path.display());
+            continue;
+        } else if path.extension().unwrap() != "txt" {
+            eprintln!("Unexpected non-txt file in directory: {}",
+                      path.display());
+            continue;
+        }
+        files.push(path);
+    }
+    files.sort();
+    for path in files {
+        let filename = path.to_string_lossy().into();
+        let file = File::open(path)?;
+        let lexer = TextLexer::new(file, filename);
+        Parser::new(Box::new(lexer)).parse(data)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
