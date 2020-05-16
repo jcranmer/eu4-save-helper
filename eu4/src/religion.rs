@@ -1,5 +1,5 @@
 use crate::{LocalizationKey, ProvinceRef, RgbColor};
-use crate::effects::{CountryEffect, ProvinceEffect};
+use crate::modifiers::{CountryModifier, ProvinceModifier};
 use paradox::{Date, ParadoxParse};
 use std::collections::HashMap;
 
@@ -55,11 +55,11 @@ pub struct Religion {
     #[optional]
     pub holy_sites: Vec<ProvinceRef>,
 
-    pub country: Vec<CountryEffect>,
+    pub country: Vec<CountryModifier>,
     #[optional]
-    pub country_as_secondary: Vec<CountryEffect>,
+    pub country_as_secondary: Vec<CountryModifier>,
     #[optional]
-    pub province: Vec<ProvinceEffect>,
+    pub province: Vec<ProvinceModifier>,
 
     #[optional] pub aspects_name: LocalizationKey,
     #[optional] pub reform_tooltip: LocalizationKey,
@@ -93,7 +93,7 @@ pub struct ReligiousSchool {
     pub invite_scholar_modifier_display: (),
     pub picture: String, // XXX: gfx reference or something?
 
-    #[effects]
-    pub effects: Vec<CountryEffect>
+    #[modifiers]
+    pub modifiers: Vec<CountryModifier>
 }
 

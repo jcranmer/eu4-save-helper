@@ -6,11 +6,11 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 
 mod kw {
-    syn::custom_keyword!(effect);
+    syn::custom_keyword!(modifier);
 }
 
-struct Effect {
-    _effect_token: kw::effect,
+struct Modifier {
+    _modifier_token: kw::modifier,
     paren_token: token::Paren,
     scope: Ident,
     _comma1_token: Token![,],
@@ -19,11 +19,11 @@ struct Effect {
     ty: Type
 }
 
-impl Parse for Effect {
+impl Parse for Modifier {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
-        Ok(Effect {
-            _effect_token: input.parse()?,
+        Ok(Modifier {
+            _modifier_token: input.parse()?,
             paren_token: parenthesized!(content in input),
             scope: content.parse()?,
             _comma1_token: content.parse()?,
@@ -34,7 +34,7 @@ impl Parse for Effect {
     }
 }
 
-impl Effect {
+impl Modifier {
     fn make_decl(&self) -> TokenStream {
         let name = &self.name;
         let ty = &self.ty;
@@ -54,23 +54,23 @@ impl Effect {
     }
 }
 
-pub struct ScopedEffectList {
-    by_scopes: HashMap<Ident, Vec<Effect>>
+pub struct ScopedModifierList {
+    by_scopes: HashMap<Ident, Vec<Modifier>>
 }
 
-impl Parse for ScopedEffectList {
+impl Parse for ScopedModifierList {
     fn parse(input: ParseStream) -> Result<Self> {
-        type EffectList = Punctuated<Effect, Token![;]>;
-        let raw_list = EffectList::parse_terminated(input)?;
-        let mut by_scopes : HashMap<Ident, Vec<Effect>> = HashMap::new();
-        for effect in raw_list {
-            by_scopes.entry(effect.scope.clone()).or_default().push(effect);
+        type ModifierList = Punctuated<Modifier, Token![;]>;
+        let raw_list = ModifierList::parse_terminated(input)?;
+        let mut by_scopes : HashMap<Ident, Vec<Modifier>> = HashMap::new();
+        for modifier in raw_list {
+            by_scopes.entry(modifier.scope.clone()).or_default().push(modifier);
         }
-        Ok(ScopedEffectList { by_scopes })
+        Ok(ScopedModifierList { by_scopes })
     }
 }
 
-impl ScopedEffectList {
+impl ScopedModifierList {
     pub fn generate_code(&self) -> TokenStream {
         self.by_scopes.keys().map(|scope| {
             let enum_decl = self.generate_enum(scope);
@@ -80,10 +80,10 @@ impl ScopedEffectList {
     }
 
     fn generate_enum(&self, scope: &Ident) -> TokenStream {
-        let effects = &self.by_scopes[scope];
-        let enum_name = format_ident!("{}{}", scope, "Effect");
-        let enum_decls = effects.iter()
-            .map(Effect::make_decl);
+        let modifiers = &self.by_scopes[scope];
+        let enum_name = format_ident!("{}{}", scope, "Modifier");
+        let enum_decls = modifiers.iter()
+            .map(Modifier::make_decl);
         quote! {
             #[allow(non_camel_case_types)]
             #[derive(Debug)]
@@ -94,10 +94,10 @@ impl ScopedEffectList {
     }
 
     fn generate_try_from(&self, scope: &Ident) -> TokenStream {
-        let enum_name = format_ident!("{}{}", scope, "Effect");
+        let enum_name = format_ident!("{}{}", scope, "Modifier");
         let from_ty = quote! { (String, paradox::UnparsedValue<'_>) };
-        let effects = &self.by_scopes[scope];
-        let match_clauses = effects.iter().map(Effect::make_match_clause);
+        let modifiers = &self.by_scopes[scope];
+        let match_clauses = modifiers.iter().map(Modifier::make_match_clause);
         quote! {
             impl std::convert::TryFrom<#from_ty> for #enum_name {
                 type Error = paradox::ParseError;
@@ -125,9 +125,9 @@ mod tests {
     use super::*;
     use syn::parse_quote;
     #[test]
-    fn test_effect() {
-        let effect: ScopedEffectList = parse_quote! { effect(Country, field, u32); effect(Country, a, i32);};
-        println!("{}", effect.generate_code());
+    fn test_modifier() {
+        let modifier: ScopedModifierList = parse_quote! { modifier(Country, field, u32); modifier(Country, a, i32);};
+        println!("{}", modifier.generate_code());
         assert!(false);
     }
 }

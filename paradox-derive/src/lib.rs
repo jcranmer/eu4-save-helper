@@ -67,7 +67,7 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     }
 
     // This type of field sets the default body instead.
-    if has_tag(field, "effects") {
+    if has_tag(field, "modifiers") {
         let body = quote_spanned!{ field.span() =>
             Some((Some(key), value)) => {
                 use std::convert::TryInto;
@@ -113,8 +113,8 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     };
 
     // Build the body of the match.
-    let body = if ty.starts_with("Vec <") && ty.ends_with("Effect >") {
-        // List of effects are handled with a special parser, due to issues
+    let body = if ty.starts_with("Vec <") && ty.ends_with("Modifier >") {
+        // List of modifiers are handled with a special parser, due to issues
         // doing so with other types.
         quote_spanned!{field.span() =>
             #field_match => {
@@ -228,7 +228,7 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     Ok(TokenStream::from(expanded))
 }
 
-#[proc_macro_derive(ParadoxParse, attributes(collect, effects, id, optional, repeated))]
+#[proc_macro_derive(ParadoxParse, attributes(collect, modifiers, id, optional, repeated))]
 pub fn derive_paradox_parse(input: proc_macro::TokenStream)
         -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -246,12 +246,12 @@ pub fn derive_game_data(input: proc_macro::TokenStream)
         .into()
 }
 
-/// Generate a set of effect enums and associated parsing.
+/// Generate a set of modifier enums and associated parsing.
 ///
-/// This macro takes as input a table of effects, such as:
+/// This macro takes as input a table of modifiers, such as:
 /// ```rust
-///   effect_list!{
-///     effect(Country, country_modifier, FixedPoint);
+///   modifier_list!{
+///     modifier(Country, country_modifier, FixedPoint);
 ///   }
 /// ```
 ///
@@ -261,8 +261,8 @@ pub fn derive_game_data(input: proc_macro::TokenStream)
 ///
 /// The third and final parameter is the type of the modifier.
 #[proc_macro]
-pub fn effect_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let table = parse_macro_input!(input as tables::ScopedEffectList);
+pub fn modifier_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let table = parse_macro_input!(input as tables::ScopedModifierList);
     table.generate_code().into()
 }
 
