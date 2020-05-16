@@ -31,6 +31,12 @@ struct FieldHandler<'a> {
     is_default: bool
 }
 
+fn stringify(ident: &Ident) -> String {
+    let mut s = ident.to_string();
+    if s.starts_with("r#") { s.replace_range(0..2, ""); }
+    s
+}
+
 fn has_tag(field: &Field, tag: &'static str) -> bool {
     field.attrs.iter()
         .any(|attr| attr.path.is_ident(tag))
@@ -47,6 +53,7 @@ fn get_tag(field: &Field, tag: &'static str) -> Option<TokenStream> {
 
 fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     let name = &field.ident.as_ref().expect("unnamed field?");
+    let stringy_name = stringify(name);
 
     // This type of field sets the default body instead.
     if has_tag(field, "collect") {
@@ -91,12 +98,12 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
         TokenStream::new()
     };
     let field_match = quote_spanned!{field.span() =>
-        Some((Some(key), value)) if key == stringify!(#name) #key_check
+        Some((Some(key), value)) if key == #stringy_name #key_check
     };
     let check_presence = if let Some(ref check_name) = check_name {
         Some(quote_spanned!{field.span() =>
             if #check_name {
-                value.validation_error(stringify!(#class), stringify!(#name),
+                value.validation_error(stringify!(#class), #stringy_name,
                     "multiple definitions found", true)?;
             }
             #check_name = true;
@@ -113,7 +120,8 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     };
 
     // Build the body of the match.
-    let body = if ty.starts_with("Vec <") && ty.ends_with("Modifier >") {
+    let body = if ty.starts_with("Vec <") &&
+            (ty.ends_with("Modifier >") || ty.ends_with("Effect >")) {
         // List of modifiers are handled with a special parser, due to issues
         // doing so with other types.
         quote_spanned!{field.span() =>
@@ -187,13 +195,14 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
             continue;
         }
         let field_name = field.name;
+        let stringy_name = stringify(&field_name);
         match_statements.push(field.body);
         if let Some(check_name) = &field.check_name {
             prologue.push(quote! { let mut #check_name = false; });
             epilogue.push(quote! {
                 if !#check_name {
                     val.validation_error(stringify!(#name),
-                        stringify!(#field_name), "not found in definition",
+                        #stringy_name, "not found in definition",
                         false)?;
                 }
             });
@@ -263,6 +272,12 @@ pub fn derive_game_data(input: proc_macro::TokenStream)
 #[proc_macro]
 pub fn modifier_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let table = parse_macro_input!(input as tables::ScopedModifierList);
+    table.generate_code().into()
+}
+
+#[proc_macro]
+pub fn effect_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let table = parse_macro_input!(input as tables::ScopedEffectList);
     table.generate_code().into()
 }
 

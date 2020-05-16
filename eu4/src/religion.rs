@@ -1,4 +1,5 @@
 use crate::{LocalizationKey, ProvinceRef, RgbColor};
+use crate::effects::CountryEffect;
 use crate::modifiers::{CountryModifier, ProvinceModifier};
 use paradox::{Date, ParadoxParse};
 use std::collections::HashMap;
@@ -60,6 +61,9 @@ pub struct Religion {
     pub country_as_secondary: Vec<CountryModifier>,
     #[optional]
     pub province: Vec<ProvinceModifier>,
+
+    #[optional]
+    pub on_convert: Vec<CountryEffect>,
 
     #[optional] pub aspects_name: LocalizationKey,
     #[optional] pub reform_tooltip: LocalizationKey,
