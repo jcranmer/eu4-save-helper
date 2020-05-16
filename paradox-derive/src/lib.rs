@@ -1,5 +1,6 @@
 extern crate proc_macro;
 
+mod game;
 mod tables;
 
 use proc_macro2::{Ident, Span, TokenStream};
@@ -13,7 +14,13 @@ struct Error(TokenStream);
 
 impl Error {
     fn new(span: Span, message: &str) -> Error {
-        Error(quote_spanned!{span => compile_error!(#message)})
+        Error(quote_spanned!{span => compile_error!(#message);})
+    }
+}
+
+impl From<syn::Error> for Error {
+    fn from(err: syn::Error) -> Self {
+        Self(err.to_compile_error())
     }
 }
 
@@ -226,6 +233,15 @@ pub fn derive_paradox_parse(input: proc_macro::TokenStream)
         -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     implement_parse_method(&input)
+        .unwrap_or_else(|err| err.0)
+        .into()
+}
+
+#[proc_macro_derive(GameData, attributes(parse))]
+pub fn derive_game_data(input: proc_macro::TokenStream)
+        -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    game::implement_game(&input)
         .unwrap_or_else(|err| err.0)
         .into()
 }

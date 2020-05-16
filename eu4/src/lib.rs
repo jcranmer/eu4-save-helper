@@ -3,11 +3,13 @@ type ProvinceRef = u32; // XXX: LIES
 type RgbColor = Vec<u32>; // XXX: Lies
 
 mod effects;
+mod game;
 mod gamestate;
 mod religion;
 mod trade;
 
 pub use effects::*;
+pub use game::*;
 pub use gamestate::*;
 pub use religion::*;
 pub use trade::*;

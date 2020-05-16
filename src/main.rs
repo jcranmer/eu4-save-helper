@@ -13,9 +13,9 @@ mod gamestate;
 mod lexer;
 
 fn main() -> Result<(), paradox::ParseError> {
-    let mut eu4data = game::GameData::load(
-        &paradox::get_default_steam_dir().join("Europa Universalis IV"));
-    eu4data.validate_gamefiles()?;
+    let mut eu4data = eu4::GameData::new(
+        &paradox::get_default_steam_dir().join("Europa Universalis IV"))?;
+    //eu4data.validate_gamefiles()?;
     //let data = eu4data.events()?;
     //let file = File::open(&paradox::get_default_save_dir().join("Europa Universalis IV/save games/older_autosave.eu4"))?;
     //gamestate::load_savegame(file)?;

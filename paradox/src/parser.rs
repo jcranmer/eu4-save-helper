@@ -311,25 +311,29 @@ impl Parser {
 pub fn load_directory(path: &Path,
                       data: &mut dyn ParadoxParse) -> Result<(), ParseError> {
     let mut files : Vec<_> = Default::default();
-    for entry in path.read_dir()? {
-        let entry = entry?;
-        let path = entry.path();
-        if !entry.metadata()?.is_file() {
-            eprintln!("Unexpected non-file in directory: {}",
-                      path.display());
-            continue;
-        } else if path.extension().is_none() {
-            eprintln!("Unexpected non-txt file in directory: {}",
-                      path.display());
-            continue;
-        } else if path.extension().unwrap() != "txt" {
-            eprintln!("Unexpected non-txt file in directory: {}",
-                      path.display());
-            continue;
+    if path.is_dir() {
+        for entry in path.read_dir()? {
+            let entry = entry?;
+            let path = entry.path();
+            if !entry.metadata()?.is_file() {
+                eprintln!("Unexpected non-file in directory: {}",
+                          path.display());
+                continue;
+            } else if path.extension().is_none() {
+                eprintln!("Unexpected non-txt file in directory: {}",
+                          path.display());
+                continue;
+            } else if path.extension().unwrap() != "txt" {
+                eprintln!("Unexpected non-txt file in directory: {}",
+                          path.display());
+                continue;
+            }
+            files.push(path);
         }
-        files.push(path);
+        files.sort();
+    } else {
+        files.push(path.to_path_buf());
     }
-    files.sort();
     for path in files {
         let filename = path.to_string_lossy().into();
         let file = File::open(path)?;
