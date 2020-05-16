@@ -59,6 +59,7 @@ impl std::str::FromStr for Date {
     type Err = ParseDateError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim_end();
         let too_few = Self::Err { msg: "Too few date components" };
         let mut pieces = s.split(".");
         let year = pieces.next().ok_or(too_few)?.parse()?;

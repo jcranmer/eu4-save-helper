@@ -85,18 +85,18 @@ pub trait Lexer {
     fn get_location_info(&self) -> String;
 }
 
-pub struct TextLexer {
-    reader: std::io::Bytes<Box<dyn Read>>,
+pub struct TextLexer<R: Read> {
+    reader: std::io::Bytes<R>,
     saved_char: Option<u8>,
     filename: String,
     line: u32,
     column: u32
 }
 
-impl TextLexer {
+impl <R: Read> TextLexer<R> {
     /// Create a lexer from the given input file. Pass a filename in as well, to
     /// give better error messages.
-    pub fn new(reader: Box<dyn Read>, filename: String) -> Self {
+    pub fn new(reader: R, filename: String) -> Self {
         TextLexer { reader: reader.bytes(), filename, line: 1, column: 1,
             saved_char: None
         }
@@ -178,7 +178,7 @@ impl TextLexer {
     }
 }
 
-impl Lexer for TextLexer {
+impl <R: Read> Lexer for TextLexer<R> {
     fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
         loop {
             match self.get_char()? {
@@ -231,6 +231,10 @@ impl Parser {
     pub fn parse<T: ParadoxParse>(mut self,
                                   result: &mut T) -> Result<(), ParseError> {
         result.read_from(UnparsedValue::make_complex(&mut self))
+            .or_else(|err| {
+                eprintln!("Error at {}", self.lexer.get_location_info());
+                Err(err)
+            })
     }
 
     fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
@@ -279,6 +283,13 @@ impl Parser {
                         })
                     },
 
+                    // LBrace: this happens in gamestate, and I assume an =
+                    // should have been present.
+                    Some(Token::LBrace) => {
+                        self.depth +=1;
+                        (Some(key), UnparsedValue::make_complex(self))
+                    },
+
                     // For anything else, unget the character and return the
                     // value as an untyped thing.
                     Some(t) => {
@@ -298,7 +309,7 @@ mod tests {
     use std::collections::HashMap;
 
     fn make_reader(input: &'static [u8]) -> TextLexer {
-        TextLexer::new(Box::new(input), "input".into())
+        TextLexer::new(input, "input".into())
     }
 
     fn check_tokens(mut lexer: impl Lexer, vec: Vec<Token>) {

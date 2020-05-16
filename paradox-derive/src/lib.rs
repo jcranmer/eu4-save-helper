@@ -29,6 +29,15 @@ fn has_tag(field: &Field, tag: &'static str) -> bool {
         .any(|attr| attr.path.is_ident(tag))
 }
 
+fn get_tag(field: &Field, tag: &'static str) -> Option<TokenStream> {
+    field.attrs.iter()
+        .find_map(|attr| if attr.path.is_ident(tag) {
+            Some(attr.tokens.clone())
+        } else {
+            None
+        })
+}
+
 fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     let name = &field.ident.as_ref().expect("unnamed field?");
 
@@ -64,8 +73,13 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     } else {
         Some(format_ident!("seen_{}", name))
     };
+    let key_check = if let Some(tokens) = get_tag(field, "id") {
+        quote_spanned!{field.span() => || key == format!("{:04x}", #tokens)}
+    } else {
+        TokenStream::new()
+    };
     let field_match = quote_spanned!{field.span() =>
-        Some((Some(key), value)) if key == stringify!(#name)
+        Some((Some(key), value)) if key == stringify!(#name) #key_check
     };
     let check_presence = if let Some(ref check_name) = check_name {
         Some(quote_spanned!{field.span() =>
@@ -202,7 +216,7 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     Ok(TokenStream::from(expanded))
 }
 
-#[proc_macro_derive(ParadoxParse, attributes(collect, effects, optional, repeated))]
+#[proc_macro_derive(ParadoxParse, attributes(collect, effects, id, optional, repeated))]
 pub fn derive_paradox_parse(input: proc_macro::TokenStream)
         -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

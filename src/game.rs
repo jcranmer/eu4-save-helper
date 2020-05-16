@@ -67,7 +67,7 @@ fn read_directories<P: ParadoxParse>(game_path: &Path, path: &Path,
 
         let filename = path.to_string_lossy().into();
         let file = File::open(path)?; 
-        let lexer = TextLexer::new(Box::new(file), filename);
+        let lexer = TextLexer::new(file, filename);
         paradox::Parser::new(Box::new(lexer)).parse(data)
             .unwrap();
     }

@@ -8,7 +8,11 @@ edition = "2018"
 auto-paradox = { version = "0.1", path = "auto-paradox" }
 paradox = { path = "paradox" }
 eu4 = { path = "eu4" }
-zip = "0.5"
+
+[dependencies.zip]
+version = "0.5"
+default-features = false
+features = ["deflate"]
 
 [workspace]
 members = [
