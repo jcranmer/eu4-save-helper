@@ -29,6 +29,7 @@ from_string!{f32}
 from_string!{f64}
 from_string!{String}
 from_string!{crate::Date}
+from_string!{crate::FixedPoint}
 
 macro_rules! impl_array {
     {$len:expr} => {

@@ -1,5 +1,8 @@
 use std::fmt;
 
+/// A fixed point integer, with a base of 1000.
+/// This means that 0.001 + 0.001 = 0.002--there are three decimal places of
+/// accuracy.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Default)]
 pub struct FixedPoint(i32);
 
@@ -87,3 +90,27 @@ impl From<f32> for FixedPoint {
         FixedPoint((val * 1000.0) as i32)
     }
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum ParseFixedPointError {
+    #[error("bad format")]
+    Format,
+    #[error("bad format")]
+    Int(#[from] std::num::ParseIntError)
+}
+
+impl std::str::FromStr for FixedPoint {
+    type Err = ParseFixedPointError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let too_few = Self::Err::Format;
+        let mut pieces = s.split(".");
+        let integer : i32 = pieces.next().ok_or(too_few)?.parse()?;
+        let fract : i32 = pieces.next().unwrap_or("0").parse()?;
+        if fract > 1000 || fract < 0 {
+            return Err(Self::Err::Format);
+        }
+        Ok(Self(integer * 1000 + fract))
+    }
+}
+

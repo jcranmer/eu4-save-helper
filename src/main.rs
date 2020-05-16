@@ -5,7 +5,7 @@ use std::fs::File;
 use std::path::Path;
 
 use paradox::Date;
-mod fixed; use fixed::FixedPoint;
+use paradox::FixedPoint;
 
 mod events;
 mod game;

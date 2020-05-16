@@ -14,11 +14,13 @@ extern crate paradox_derive;
 pub use paradox_derive::*;
 
 mod date;
+mod fixed;
 mod parser;
 mod parser_impl;
 mod save;
 
 pub use date::*;
+pub use fixed::*;
 pub use parser::*;
 pub use save::*;
 

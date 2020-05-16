@@ -1,6 +1,5 @@
-use paradox::Date;
+use paradox::{Date, FixedPoint};
 use eu4::*;
-use crate::fixed::FixedPoint;
 use crate::lexer::{Lexer, parse_file};
 use std::collections::HashMap;
 use std::fs::File;

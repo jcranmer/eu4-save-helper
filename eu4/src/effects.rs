@@ -1,4 +1,4 @@
-type FixedPoint = f32; // XXX XXX XXX
+use paradox::FixedPoint;
 
 paradox::effect_list! {
     effect(Country, army_tradition, FixedPoint);
