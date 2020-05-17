@@ -79,7 +79,7 @@ pub struct Religion {
     #[optional] pub hre_heretic_religion: bool,
     #[optional] pub hre_religion: bool,
     #[optional] pub misguided_heretic: bool,
-    #[optional] pub personal_diety: bool,
+    #[optional] pub personal_deity: bool,
     #[optional] pub religious_reforms: bool,
     #[optional] pub uses_anglican_power: bool,
     #[optional] pub uses_church_power: bool,
@@ -92,9 +92,9 @@ pub struct Religion {
 #[derive(ParadoxParse, Default, Debug)]
 pub struct ReligiousSchool {
     pub can_invite_scholar: (),
-    pub on_invite_scholar: (),
+    pub on_invite_scholar: (), // Vec<CountryEffect>,
     pub potential_invite_scholar: (),
-    pub invite_scholar_modifier_display: (),
+    pub invite_scholar_modifier_display: String, // XXX: EventModifier
     pub picture: String, // XXX: gfx reference or something?
 
     #[modifiers]
