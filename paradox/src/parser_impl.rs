@@ -150,6 +150,7 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
                             format!("Unexpected keyless value in map")));
                 },
                 Some((Some(key), v)) => {
+                    let key = key.into_owned();
                     let mut parsed = T::default();
                     parsed.read_from(parser, v)?;
                     if self.insert(key.clone(), parsed).is_some() {

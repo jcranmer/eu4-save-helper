@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Read;
 use std::fs::File;
 use std::path::Path;
@@ -33,7 +34,8 @@ impl UnparsedValue {
         }
     }
 
-    pub fn next_key_value_pair(&mut self, parser: &mut Parser) -> Result<Option<ValuePair>, ParseError> {
+    pub fn next_key_value_pair<'a>(&mut self, parser: &'a mut Parser
+                                ) -> Result<Option<ValuePair<'a>>, ParseError> {
         let level = match self {
             Self::Complex { level } => *level,
             Self::Simple(s) =>
@@ -65,7 +67,7 @@ impl UnparsedValue {
     }
 }
 
-pub type ValuePair = (Option<String>, UnparsedValue);
+pub type ValuePair<'a> = (Option<Cow<'a, str>>, UnparsedValue);
 
 pub trait ParadoxParse {
     fn read_from(&mut self, parser: &mut Parser,
@@ -83,7 +85,8 @@ pub enum Token {
     RBrace,
     Eq,
     // XXX: simple value type is probably better
-    String(String)
+    String(String),
+    Interned(&'static str)
 }
 
 pub trait Lexer {
@@ -262,6 +265,44 @@ impl Parser {
         self.saved_token = Some(token);
     }
 
+    fn try_key_eq<'a>(&mut self, key: Cow<'a, str>) -> Result<ValuePair<'a>, ParseError> {
+        Ok(match self.get_token()? {
+            // EOF: it's okay if we're at top depth.
+            None if self.depth == 0 =>
+                (None, UnparsedValue::Simple(key.into_owned())),
+            None => return Err(ParseError::Eof),
+
+            // Eq: we are to be followed by a value.
+            Some(Token::Eq) => {
+                (Some(key), match self.get_token()? {
+                    Some(Token::String(value)) => UnparsedValue::Simple(value),
+                    Some(Token::Interned(value)) =>
+                        UnparsedValue::Simple(value.into()),
+                    Some(Token::LBrace) => {
+                        self.depth += 1;
+                        UnparsedValue::make_complex(self)
+                    },
+                    None => return Err(ParseError::Eof),
+                    Some(t) => return Err(ParseError::Parse(t))
+                })
+            },
+
+            // LBrace: this happens in gamestate, and I assume an = should have
+            // been present.
+            Some(Token::LBrace) => {
+                self.depth += 1;
+                (Some(key), UnparsedValue::make_complex(self))
+            },
+
+            // For anything else, unget the character and return the
+            // value as an untyped thing.
+            Some(t) => {
+                self.unget(t);
+                (None, UnparsedValue::Simple(key.into_owned()))
+            }
+        })
+    }
+
     fn get_value(&mut self) -> Result<Option<ValuePair>, ParseError> {
         match self.get_token()? {
             None if self.depth == 0 => Ok(None),
@@ -275,40 +316,10 @@ impl Parser {
                 Ok(Some((None, UnparsedValue::make_complex(self))))
             },
             Some(Token::String(key)) => {
-                Ok(Some(match self.get_token()? {
-                    // EOF: it's okay if we're at top depth.
-                    None if self.depth == 0 =>
-                        (None, UnparsedValue::Simple(key)),
-                    None => return Err(ParseError::Eof),
-
-                    // Eq: we are to be followed by a value.
-                    Some(Token::Eq) => {
-                        (Some(key), match self.get_token()? {
-                            Some(Token::String(value)) =>
-                                UnparsedValue::Simple(value),
-                            Some(Token::LBrace) => {
-                                self.depth += 1;
-                                UnparsedValue::make_complex(self)
-                            },
-                            None => return Err(ParseError::Eof),
-                            Some(t) => return Err(ParseError::Parse(t))
-                        })
-                    },
-
-                    // LBrace: this happens in gamestate, and I assume an =
-                    // should have been present.
-                    Some(Token::LBrace) => {
-                        self.depth +=1;
-                        (Some(key), UnparsedValue::make_complex(self))
-                    },
-
-                    // For anything else, unget the character and return the
-                    // value as an untyped thing.
-                    Some(t) => {
-                        self.unget(t);
-                        (None, UnparsedValue::Simple(key))
-                    }
-                }))
+                self.try_key_eq(key.into()).map(|val| Some(val))
+            },
+            Some(Token::Interned(key)) => {
+                self.try_key_eq(key.into()).map(|val| Some(val))
             },
             Some(t) => Err(ParseError::Parse(t))
         }

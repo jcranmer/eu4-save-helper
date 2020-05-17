@@ -255,15 +255,3 @@ impl <T: TableEntry> ScopedList<T> {
 
 pub(crate) type ScopedModifierList = ScopedList<Modifier>;
 pub(crate) type ScopedEffectList = ScopedList<Effect>;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use syn::parse_quote;
-    #[test]
-    fn test_modifier() {
-        let modifier: ScopedModifierList = parse_quote! { modifier(Country, field, u32); modifier(Country, a, i32);};
-        println!("{}", modifier.generate_code());
-        assert!(false);
-    }
-}

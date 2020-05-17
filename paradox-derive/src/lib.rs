@@ -60,7 +60,7 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
         let body = quote_spanned!{ field.span() =>
             Some((Some(key), value)) => {
                 use std::collections::hash_map::Entry;
-                let entry = self.#name.entry(key);
+                let entry = self.#name.entry(key.into_owned());
                 match entry {
                     Entry::Occupied(ref e) =>
                         value.validation_error(stringify!(#class), &e.key(),
@@ -77,6 +77,7 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     if has_tag(field, "modifiers") {
         let body = quote_spanned!{ field.span() =>
             Some((Some(key), value)) => {
+                let key = key.into_owned();
                 self.#name.push(parser.try_parse(&key, value)?);
             },
         };
@@ -132,6 +133,7 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
                             value.drain(parser)?;
                         },
                         Some((Some(key), value)) => {
+                            let key = key.into_owned();
                             vec.push(parser.try_parse(&key, value)?);
                         }
                     }

@@ -31,7 +31,7 @@ impl <R: Read> BinaryLexer<R> {
             0x0001 => Token::Eq,
             0x0003 => Token::LBrace,
             0x0004 => Token::RBrace,
-            0x000b => Token::String("id".into()),
+            0x000b => Token::Interned("id"),
             0x000c => {
                 let val = self.reader.read_i32::<LittleEndian>()?;
                 self.offset += 4;
@@ -68,7 +68,7 @@ impl <R: Read> BinaryLexer<R> {
                 Token::String(val.to_string())
             },
             0x001b => {
-                Token::String("name".into())
+                Token::Interned("name")
             },
             0x0167 => {
                 // A fixed pointer number, with a base of 1 << 16.
@@ -91,7 +91,7 @@ impl <R: Read> BinaryLexer<R> {
             },
             0x0020..=0xffff => {
                 let s = include!("binary_tokens.rs");
-                Token::String(s.into())
+                Token::Interned(s)
             },
             _ => panic!("Unknown code: {:4x}", code)
         })
