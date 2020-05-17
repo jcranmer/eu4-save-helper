@@ -39,62 +39,21 @@ impl <T> From<String> for CacheKey<T> {
 
 #[derive(Default, ParadoxScope)]
 pub struct Gamestate {
-    pub achievement_ok: bool,
-    pub current_age: String,
-    pub countries: HashMap<String, Country>,
-    pub next_age_progress: FixedPoint,
-    pub speed: i32,
-    pub start_date: Date,
 }
 
 #[derive(Default, ParadoxScope)]
 pub struct Country {
-    pub ai: bool,
-    pub army_tradition: FixedPoint,
     pub authority: FixedPoint,
     pub coalition_date: Date,
-    pub corruption: FixedPoint,
-    pub current_power_projection: FixedPoint,
-    pub decision_seed: i32,
-    pub delayed_treasure: FixedPoint,
-    pub devotion: FixedPoint,
     pub doom: FixedPoint,
     pub excommunicated: bool,
-    pub government_rank: i32,
     pub harmony: FixedPoint,
     pub horde_unity: FixedPoint,
-    pub inauguration: Date,
-    pub inflation: FixedPoint,
-    pub innovativeness: FixedPoint,
-    pub institutions: Vec<i32>,
-    pub is_at_war: bool,
     pub is_elector: bool,
     pub is_great_power: bool,
-    pub isolationism: i32,
-    pub karma: FixedPoint,
-    pub last_election: Date,
-    pub legitimacy: FixedPoint,
     pub liberty_desire: FixedPoint,
     pub luck: bool,
-    pub manpower: FixedPoint,
-    pub max_manpower: FixedPoint,
-    pub max_sailors: FixedPoint,
-    pub mercantilism: FixedPoint,
-    pub meritocracy: FixedPoint,
-    pub navy_tradition: FixedPoint,
-    pub papal_influence: FixedPoint,
     pub patriarch_authority: FixedPoint,
-    pub piety: FixedPoint,
-    pub prestige: FixedPoint,
-    pub republican_tradition: FixedPoint,
-    pub sailors: FixedPoint,
-    pub splendor: FixedPoint,
-    pub stability: FixedPoint,
-    pub subject_focus: i32,
-    pub transfer_home_bonus: FixedPoint,
-    pub treasury: FixedPoint,
-    pub war_exhaustion: FixedPoint,
-    pub anti_nation_ruining_end_date: Date,
     pub rnw_generated: bool,
     pub overlord: CacheKey<Country>,
     pub coalition_target: CacheKey<Country>,
@@ -105,20 +64,12 @@ pub struct Country {
     pub trade_port: CacheKey<Province>,
     pub capital: CacheKey<Province>,
     pub fixed_capital: CacheKey<Province>,
-    pub government_reform_progress: FixedPoint,
     pub religious_school: CacheKey<ReligiousSchool>,
 
     // Sliders & other UI changes
-    pub land_maintenance: FixedPoint,
-    pub naval_maintenance: FixedPoint,
-    pub colonial_maintenance: FixedPoint,
-    pub missionary_maintenance: FixedPoint,
-    pub root_out_corruption_slider: FixedPoint,
     pub last_conversion_secondary: Date,
     pub last_migration: Date,
     pub last_hre_vote: Date,
-    pub last_focus_move: Date,
-    pub national_focus: String, // XXX: better key?
     pub preferred_emperor: CacheKey<Country>,
 
     // History
@@ -207,14 +158,7 @@ pub struct Country {
     pub adjective: String, // XXX: l10n
 
     // Unknown
-    pub loan_size: i32,
-    pub trade_mission: FixedPoint,
-    pub blockade_mission: FixedPoint,
-    pub dirty_colony: bool,
-    pub spy_propensity: FixedPoint,
     pub rebel_threat: i32,
-    pub new_monarch: bool,
-    pub recovery_motivation: FixedPoint,
     pub goldtype: i32,
     pub wants_to_be_great_power: bool,
     pub wants_to_be_great_power_next: bool,
@@ -222,19 +166,8 @@ pub struct Country {
     pub last_bankrupt: Date,
     pub preferred_coalition_score: FixedPoint,
     pub debase_recharge_need: i32,
-    pub has_set_government_name: bool,
-    pub original_dynsasty: String,
-    pub last_sent_alliance_offer: Date,
-    pub original_capital: CacheKey<Province>,
 
     // AI fields?
-    pub assigned_estates: bool,
-    pub initialized_rivals: bool,
-    pub recalculate_strategy: bool,
-    pub update_opinion_cache: bool,
-    pub needs_refresh: bool,
-    pub casus_bellis_refresh: bool,
-    pub needs_rebel_unit_refresh: bool,
     pub human: bool,
     pub was_player: bool
 }
