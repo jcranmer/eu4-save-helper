@@ -11,33 +11,31 @@ const ERR_ON_INVALID_INPUT : bool = true;
 // between games (and since I don't own all of them, I can't test all of the
 // issues here).
 
-pub enum UnparsedValue<'a> {
+pub enum UnparsedValue {
     Complex {
-        parser: &'a mut Parser,
         level: u32
     },
     Simple(String)
 }
 
-impl <'a> UnparsedValue<'a> {
-    fn make_complex(parser: &'a mut Parser) -> Self {
+impl UnparsedValue {
+    fn make_complex(parser: &Parser) -> Self {
         Self::Complex {
-            level: parser.depth,
-            parser
+            level: parser.depth
         }
     }
 
     pub fn into_string(self) -> Result<String, ParseError> {
         match self {
-            Self::Complex{ parser: _, level: _ } =>
+            Self::Complex{ level: _ } =>
                 Err(ParseError::Parse(Token::LBrace)),
             Self::Simple(s) => Ok(s)
         }
     }
 
-    pub fn next_key_value_pair(&mut self) -> Result<Option<ValuePair>, ParseError> {
-        let (parser, level) = match self {
-            Self::Complex { parser, level } => (parser, *level),
+    pub fn next_key_value_pair(&mut self, parser: &mut Parser) -> Result<Option<ValuePair>, ParseError> {
+        let level = match self {
+            Self::Complex { level } => *level,
             Self::Simple(s) =>
                 return Err(ParseError::Parse(Token::String(s.clone())))
         };
@@ -49,9 +47,9 @@ impl <'a> UnparsedValue<'a> {
         }
     }
 
-    pub fn drain(self) -> Result<(), ParseError> {
+    pub fn drain(self, parser: &mut Parser) -> Result<(), ParseError> {
         let mut discard = ();
-        discard.read_from(self)
+        discard.read_from(parser, self)
     }
 
     pub fn validation_error(&self, class_name: &'static str, field: &str,
@@ -67,10 +65,16 @@ impl <'a> UnparsedValue<'a> {
     }
 }
 
-pub type ValuePair<'a> = (Option<String>, UnparsedValue<'a>);
+pub type ValuePair = (Option<String>, UnparsedValue);
 
 pub trait ParadoxParse {
-    fn read_from(&mut self, value: UnparsedValue<'_>) -> Result<(), ParseError>;
+    fn read_from(&mut self, parser: &mut Parser,
+                 value: UnparsedValue) -> Result<(), ParseError>;
+}
+
+pub trait FromParadoxKeyPair : Sized {
+    fn try_from(parser: &mut Parser, key: &str,
+                value: UnparsedValue) -> Result<Self, ParseError>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -232,11 +236,17 @@ impl Parser {
 
     pub fn parse(mut self,
                  result: &mut dyn ParadoxParse) -> Result<(), ParseError> {
-        result.read_from(UnparsedValue::make_complex(&mut self))
+        let unparsed = UnparsedValue::make_complex(&self);
+        result.read_from(&mut self, unparsed)
             .or_else(|err| {
                 eprintln!("Error at {}", self.lexer.get_location_info());
                 Err(err)
             })
+    }
+
+    pub fn try_parse<T: FromParadoxKeyPair>(&mut self, key: &str,
+                                            value: UnparsedValue) -> Result<T, ParseError> {
+        T::try_from(self, key, value)
     }
 
     fn get_token(&mut self) -> Result<Option<Token>, ParseError> {

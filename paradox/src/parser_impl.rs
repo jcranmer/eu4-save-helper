@@ -13,8 +13,8 @@ fn convert_err<T, E: StdError + 'static>(val: Result<T, E>)
 macro_rules! from_string {
     {$T:ty} => {
         impl ParadoxParse for $T {
-            fn read_from(&mut self,
-                         val: UnparsedValue<'_>) -> Result<(), ParseError> {
+            fn read_from(&mut self, _: &mut Parser,
+                         val: UnparsedValue) -> Result<(), ParseError> {
                 let parsed = convert_err(<$T>::from_str(&val.into_string()?))?;
                 std::mem::replace(self, parsed);
                 Ok(())
@@ -34,11 +34,11 @@ from_string!{crate::FixedPoint}
 macro_rules! impl_array {
     {$len:expr} => {
         impl <T: ParadoxParse> ParadoxParse for [T; $len] {
-            fn read_from(&mut self,
-                         mut val: UnparsedValue<'_>) -> Result<(), ParseError> {
+            fn read_from(&mut self, parser: &mut Parser,
+                         mut val: UnparsedValue) -> Result<(), ParseError> {
                 let mut i = 0;
                 loop {
-                    let next_pair = val.next_key_value_pair()?;
+                    let next_pair = val.next_key_value_pair(parser)?;
                     match next_pair {
                         None => {
                             return if i != $len {
@@ -54,7 +54,7 @@ macro_rules! impl_array {
                                 v.validation_error(stringify!([T; $len]), "",
                                     "too many entries in list", true)?;
                             }
-                            self[i].read_from(v)?;
+                            self[i].read_from(parser, v)?;
                             i += 1;
                         },
                         Some((Some(key), _)) => {
@@ -102,7 +102,8 @@ impl_array!{31}
 impl_array!{32}
 
 impl ParadoxParse for bool {
-    fn read_from(&mut self, val: UnparsedValue) -> Result<(), ParseError> {
+    fn read_from(&mut self, _: &mut Parser,
+                 val: UnparsedValue) -> Result<(), ParseError> {
         let string = &val.into_string()?;
         if string == "yes" {
             *self = true;
@@ -117,15 +118,15 @@ impl ParadoxParse for bool {
 }
 
 impl <T: ParadoxParse + Default> ParadoxParse for Vec<T> {
-    fn read_from(&mut self,
-                 mut val: UnparsedValue<'_>) -> Result<(), ParseError> {
+    fn read_from(&mut self, parser: &mut Parser,
+                 mut val: UnparsedValue) -> Result<(), ParseError> {
         loop {
-            let next_pair = val.next_key_value_pair()?;
+            let next_pair = val.next_key_value_pair(parser)?;
             match next_pair {
                 None => return Ok(()),
                 Some((None, v)) => {
                     let mut parsed = T::default();
-                    parsed.read_from(v)?;
+                    parsed.read_from(parser, v)?;
                     self.push(parsed);
                 },
                 Some((Some(key), _)) => {
@@ -138,10 +139,10 @@ impl <T: ParadoxParse + Default> ParadoxParse for Vec<T> {
 }
 
 impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
-    fn read_from(&mut self,
-                 mut val: UnparsedValue<'_>) -> Result<(), ParseError> {
+    fn read_from(&mut self, parser: &mut Parser,
+                 mut val: UnparsedValue) -> Result<(), ParseError> {
         loop {
-            let next_pair = val.next_key_value_pair()?;
+            let next_pair = val.next_key_value_pair(parser)?;
             match next_pair {
                 None => return Ok(()),
                 Some((None, _)) => {
@@ -150,7 +151,7 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
                 },
                 Some((Some(key), v)) => {
                     let mut parsed = T::default();
-                    parsed.read_from(v)?;
+                    parsed.read_from(parser, v)?;
                     if self.insert(key.clone(), parsed).is_some() {
                         return Err(ParseError::Constraint(
                             format!("Duplicate key {} in map", key)));
@@ -162,18 +163,18 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
 }
 
 impl ParadoxParse for () {
-    fn read_from(&mut self,
-                 mut val: UnparsedValue<'_>) -> Result<(), ParseError> {
+    fn read_from(&mut self, parser: &mut Parser,
+                 mut val: UnparsedValue) -> Result<(), ParseError> {
         match val {
             UnparsedValue::Simple(_) => Ok(()),
-            UnparsedValue::Complex { parser: _, level: _ } => {
+            UnparsedValue::Complex { level: _ } => {
                 loop {
-                    let next_pair = val.next_key_value_pair()?;
+                    let next_pair = val.next_key_value_pair(parser)?;
                     match next_pair {
                         None => return Ok(()),
                         Some((_, v)) => {
                             let mut parsed = ();
-                            parsed.read_from(v)?;
+                            parsed.read_from(parser, v)?;
                         },
                     }
                 }

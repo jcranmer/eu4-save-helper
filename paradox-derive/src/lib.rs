@@ -67,7 +67,7 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
                             "multiple definitions found", false)?,
                     _ => ()
                 }
-                entry.or_default().read_from(value)?;
+                entry.or_default().read_from(parser, value)?;
             },
         };
         return FieldHandler { name, body, check_name: None, is_default: true };
@@ -77,8 +77,7 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     if has_tag(field, "modifiers") {
         let body = quote_spanned!{ field.span() =>
             Some((Some(key), value)) => {
-                use std::convert::TryInto;
-                self.#name.push((key, value).try_into()?);
+                self.#name.push(parser.try_parse(&key, value)?);
             },
         };
         return FieldHandler { name, body, check_name: None, is_default: true };
@@ -92,13 +91,8 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     } else {
         Some(format_ident!("seen_{}", name))
     };
-    let key_check = if let Some(tokens) = get_tag(field, "id") {
-        quote_spanned!{field.span() => || key == format!("{:04x}", #tokens)}
-    } else {
-        TokenStream::new()
-    };
     let field_match = quote_spanned!{field.span() =>
-        Some((Some(key), value)) if key == #stringy_name #key_check
+        Some((Some(key), value)) if key == #stringy_name
     };
     let check_presence = if let Some(ref check_name) = check_name {
         Some(quote_spanned!{field.span() =>
@@ -129,17 +123,16 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
                 #check_presence
                 let vec = &mut self.#name;
                 loop {
-                    let next_pair = val.next_key_value_pair()?;
+                    let next_pair = val.next_key_value_pair(parser)?;
                     match next_pair {
                         None => break,
                         Some((None, value)) => {
                             value.validation_error(
                                 stringify!(#class), "", "bad key", false)?;
-                            value.drain()?;
+                            value.drain(parser)?;
                         },
                         Some((Some(key), value)) => {
-                            use std::convert::TryInto;
-                            vec.push((key, value).try_into()?);
+                            vec.push(parser.try_parse(&key, value)?);
                         }
                     }
                 }
@@ -164,7 +157,7 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
             #field_match => {
                 #check_presence
                 #get_parsee
-                parsee.read_from(value)?;
+                parsee.read_from(parser, value)?;
             }
         }
     };
@@ -183,7 +176,7 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     let mut default_body = quote! {
         Some((Some(key), val)) => {
             println!("{}/{}", stringify!(#name), key);
-            val.drain()?;
+            val.drain(parser)?;
         },
     };
     let mut match_statements = Vec::new();
@@ -212,17 +205,18 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     let expanded = quote! {
         #[automatically_derived]
         impl paradox::ParadoxParse for #name {
-            fn read_from(&mut self, mut val: paradox::UnparsedValue<'_>)
+            fn read_from(&mut self, parser: &mut paradox::Parser,
+                         mut val: paradox::UnparsedValue)
                     -> Result<(), paradox::ParseError> {
                 #( #prologue )*
                 loop {
-                    let next_pair = val.next_key_value_pair()?;
+                    let next_pair = val.next_key_value_pair(parser)?;
                     match next_pair {
                         None => break,
                         Some((None, val)) => {
                             val.validation_error(stringify!(#name), "",
                                 "bad key", false)?;
-                            val.drain()?;
+                            val.drain(parser)?;
                         },
                         #( #match_statements, )*
                         #default_body
@@ -237,7 +231,7 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     Ok(TokenStream::from(expanded))
 }
 
-#[proc_macro_derive(ParadoxParse, attributes(collect, modifiers, id, optional, repeated))]
+#[proc_macro_derive(ParadoxParse, attributes(collect, modifiers, optional, repeated))]
 pub fn derive_paradox_parse(input: proc_macro::TokenStream)
         -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

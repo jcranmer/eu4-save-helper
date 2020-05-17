@@ -70,7 +70,7 @@ impl TableEntry for Modifier {
         quote_spanned! { self.paren_token.span =>
             key if key == #stringy_name => {
                 let mut parsee : #ty = Default::default();
-                parsee.read_from(value)?;
+                parsee.read_from(parser, value)?;
                 Ok(Self::#name(parsee))
             }
         }
@@ -164,7 +164,7 @@ impl TableEntry for Effect {
         let body = if let Some(ty) = self.simple_ty() {
             quote_spanned! { ty.span() =>
                 let mut parsee: #ty = Default::default();
-                parsee.read_from(value)?;
+                parsee.read_from(parser, value)?;
                 Ok(Self::#name(parsee))
             }
         } else {
@@ -177,7 +177,7 @@ impl TableEntry for Effect {
                 #[derive(Default, paradox::ParadoxParse)]
                 struct StructAnon { #( #args ),* }
                 let mut parsee : StructAnon = Default::default();
-                parsee.read_from(value)?;
+                parsee.read_from(parser, value)?;
                 Ok(Self::#name { #( #copy_strings ),* })
             }
         };
@@ -230,17 +230,15 @@ impl <T: TableEntry> ScopedList<T> {
 
     fn generate_try_from(&self, scope: &Ident) -> TokenStream {
         let enum_name = format_ident!("{}{}", scope, T::ENUM_NAME);
-        let from_ty = quote! { (String, paradox::UnparsedValue<'_>) };
         let modifiers = &self.by_scopes[scope];
         let match_clauses = modifiers.iter().map(T::make_match_clause);
         quote! {
-            impl std::convert::TryFrom<#from_ty> for #enum_name {
-                type Error = paradox::ParseError;
-
-                fn try_from(v: #from_ty) -> Result<Self, Self::Error> {
+            impl paradox::FromParadoxKeyPair for #enum_name {
+                fn try_from(parser: &mut paradox::Parser, key: &str,
+                            value: paradox::UnparsedValue)
+                            -> Result<Self, paradox::ParseError> {
                     use paradox::ParadoxParse;
-                    let value = v.1;
-                    match &v.0 {
+                    match key {
                         #( #match_clauses ),*
                         key => {
                             value.validation_error(stringify!(#enum_name),
