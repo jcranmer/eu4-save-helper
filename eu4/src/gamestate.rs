@@ -200,6 +200,8 @@ pub struct Country {
     #[optional] pub federation_leader: String,
     #[repeated] pub federation_friends: Vec<String>,
     #[repeated] pub coalition_against_us: Vec<String>,
+    #[optional] pub coalition_target: String,
+    #[optional] pub coalition_date: (), // Date
     #[repeated] pub preferred_coalition_against_us: Vec<String>,
     #[optional] pub preferred_coalition_target: String,
     #[optional] pub preferred_coalition_score: FixedPoint,

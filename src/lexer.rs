@@ -78,16 +78,6 @@ impl From<Token> for crate::Date {
     }
 }
 
-impl <T> From<Token> for crate::gamestate::CacheKey<T> {
-    fn from(t: Token) -> Self {
-        match t {
-            Token::Integer(i) => i.into(),
-            Token::String(s) => s.into(),
-            _ => panic!("Tried to convert {:?} to cache token", t)
-        }
-    }
-}
-
 fn convert_string(bytes: Vec<u8>) -> String {
     String::from_utf8(bytes).unwrap_or_else(|err| {
         let bytes = err.into_bytes();

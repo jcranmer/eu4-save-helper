@@ -5,7 +5,6 @@ authors = ["Joshua Cranmer <Pidgeot18@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-auto-paradox = { version = "0.1", path = "auto-paradox" }
 paradox = { path = "paradox" }
 eu4 = { path = "eu4" }
 
@@ -16,7 +15,6 @@ features = ["deflate"]
 
 [workspace]
 members = [
-    "auto-paradox",
     "eu4",
     "paradox",
     "paradox-derive"

@@ -6,6 +6,8 @@ use thiserror::Error;
 
 const ERR_ON_INVALID_INPUT : bool = true;
 
+type Result<T> = std::result::Result<T, ParseError>;
+
 // There's no good documentation on Paradox's file format here. Most of this
 // information is reverse-engineered from the existing files. In addition,
 // there may be subtle differences between different engine versions, and hence
@@ -26,7 +28,7 @@ impl UnparsedValue {
         }
     }
 
-    pub fn into_string(self) -> Result<String, ParseError> {
+    pub fn into_string(self) -> Result<String> {
         match self {
             Self::Complex{ level: _ } =>
                 Err(ParseError::Parse(Token::LBrace)),
@@ -35,7 +37,7 @@ impl UnparsedValue {
     }
 
     pub fn next_key_value_pair<'a>(&mut self, parser: &'a mut Parser
-                                ) -> Result<Option<ValuePair<'a>>, ParseError> {
+                                ) -> Result<Option<ValuePair<'a>>> {
         let level = match self {
             Self::Complex { level } => *level,
             Self::Simple(s) =>
@@ -49,14 +51,14 @@ impl UnparsedValue {
         }
     }
 
-    pub fn drain(self, parser: &mut Parser) -> Result<(), ParseError> {
+    pub fn drain(self, parser: &mut Parser) -> Result<()> {
         let mut discard = ();
         discard.read_from(parser, self)
     }
 
     pub fn validation_error(&self, class_name: &'static str, field: &str,
                             message: &str,
-                            fatal: bool) -> Result<(), ParseError> {
+                            fatal: bool) -> Result<()> {
         let msg = format!("{}/{}: {}", class_name, field, message);
         if fatal || ERR_ON_INVALID_INPUT {
             Err(ParseError::Constraint(msg))
@@ -71,12 +73,12 @@ pub type ValuePair<'a> = (Option<Cow<'a, str>>, UnparsedValue);
 
 pub trait ParadoxParse {
     fn read_from(&mut self, parser: &mut Parser,
-                 value: UnparsedValue) -> Result<(), ParseError>;
+                 value: UnparsedValue) -> Result<()>;
 }
 
 pub trait FromParadoxKeyPair : Sized {
     fn try_from(parser: &mut Parser, key: &str,
-                value: UnparsedValue) -> Result<Self, ParseError>;
+                value: UnparsedValue) -> Result<Self>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -90,7 +92,7 @@ pub enum Token {
 }
 
 pub trait Lexer {
-    fn get_token(&mut self) -> Result<Option<Token>, ParseError>;
+    fn get_token(&mut self) -> Result<Option<Token>>;
     fn get_location_info(&self) -> String;
 }
 
@@ -111,7 +113,7 @@ impl <R: Read> TextLexer<R> {
         }
     }
 
-    fn get_char(&mut self) -> Result<Option<u8>, std::io::Error> {
+    fn get_char(&mut self) -> std::io::Result<Option<u8>> {
         if let Some(ch) = self.saved_char {
             self.saved_char = None;
             Ok(Some(ch))
@@ -142,7 +144,7 @@ impl <R: Read> TextLexer<R> {
     }
 
     /// Read until the end of line of a comment.
-    fn skip_comment(&mut self) -> Result<(), std::io::Error> {
+    fn skip_comment(&mut self) -> std::io::Result<()> {
         loop {
             match self.get_char()? {
                 Some(b'\n') | None => return Ok(()),
@@ -152,7 +154,7 @@ impl <R: Read> TextLexer<R> {
     }
 
     /// Read the tail of a quoted string.
-    fn read_qstring(&mut self) -> Result<String, ParseError> {
+    fn read_qstring(&mut self) -> Result<String> {
         let mut s = String::new();
         loop {
             match self.get_char()? {
@@ -165,7 +167,7 @@ impl <R: Read> TextLexer<R> {
     }
 
     /// Read an unparsed full token.
-    fn read_unknown(&mut self, init_char: u8) -> Result<String, ParseError> {
+    fn read_unknown(&mut self, init_char: u8) -> Result<String> {
         let mut s = String::new();
         s.push(init_char as char);
         loop {
@@ -188,7 +190,7 @@ impl <R: Read> TextLexer<R> {
 }
 
 impl <R: Read> Lexer for TextLexer<R> {
-    fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
+    fn get_token(&mut self) -> Result<Option<Token>> {
         loop {
             match self.get_char()? {
                 None => return Ok(None),
@@ -237,8 +239,7 @@ impl Parser {
         Parser { lexer, depth: 0, saved_token: None }
     }
 
-    pub fn parse(mut self,
-                 result: &mut dyn ParadoxParse) -> Result<(), ParseError> {
+    pub fn parse(mut self, result: &mut dyn ParadoxParse) -> Result<()> {
         let unparsed = UnparsedValue::make_complex(&self);
         result.read_from(&mut self, unparsed)
             .or_else(|err| {
@@ -248,11 +249,11 @@ impl Parser {
     }
 
     pub fn try_parse<T: FromParadoxKeyPair>(&mut self, key: &str,
-                                            value: UnparsedValue) -> Result<T, ParseError> {
+                                            value: UnparsedValue) -> Result<T> {
         T::try_from(self, key, value)
     }
 
-    fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
+    fn get_token(&mut self) -> Result<Option<Token>> {
         if self.saved_token.is_some() {
             Ok(self.saved_token.take())
         } else {
@@ -265,7 +266,7 @@ impl Parser {
         self.saved_token = Some(token);
     }
 
-    fn try_key_eq<'a>(&mut self, key: Cow<'a, str>) -> Result<ValuePair<'a>, ParseError> {
+    fn try_key_eq<'a>(&mut self, key: Cow<'a, str>) -> Result<ValuePair<'a>> {
         Ok(match self.get_token()? {
             // EOF: it's okay if we're at top depth.
             None if self.depth == 0 =>
@@ -303,7 +304,7 @@ impl Parser {
         })
     }
 
-    fn get_value(&mut self) -> Result<Option<ValuePair>, ParseError> {
+    fn get_value(&mut self) -> Result<Option<ValuePair>> {
         match self.get_token()? {
             None if self.depth == 0 => Ok(None),
             None => Err(ParseError::Eof),
@@ -329,8 +330,7 @@ impl Parser {
 /// Load an entire directory of parseable files.
 ///
 /// All of the entries will be loaded in alphabetical order.
-pub fn load_directory(path: &Path,
-                      data: &mut dyn ParadoxParse) -> Result<(), ParseError> {
+pub fn load_directory(path: &Path, data: &mut dyn ParadoxParse) -> Result<()> {
     let mut files : Vec<_> = Default::default();
     if path.is_dir() {
         for entry in path.read_dir()? {
