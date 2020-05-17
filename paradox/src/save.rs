@@ -89,12 +89,10 @@ impl <R: Read> BinaryLexer<R> {
                 let val = (val as f64) / 65536.0;
                 Token::String(val.to_string())
             },
-            0x284b => Token::String("yes".into()),
-            0x284c => Token::String("no".into()),
-            0x28aa => Token::String("DIP".into()),
-            0x28ab => Token::String("MIL".into()),
-            0x28ac => Token::String("ADM".into()),
-            0x0020..=0xffff => Token::String(format!("{:04x}", code)),
+            0x0020..=0xffff => {
+                let s = include!("binary_tokens.rs");
+                Token::String(s.into())
+            },
             _ => panic!("Unknown code: {:4x}", code)
         })
     }
