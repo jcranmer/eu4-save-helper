@@ -84,8 +84,7 @@ impl std::str::FromStr for Date {
 // XXX: Date parsing as an integer:
 // dates are stored as a 0x000c tag. the integer representation is hours since
 // -5000, 1, 1. So conversion
-#[allow(dead_code)]
-fn convert_date(mut val: u32) -> Date {
+pub(crate) fn convert_date(mut val: u32) -> Date {
     fn extract_mod(v: &mut u32, period: u32) -> u32 {
         let remainder = *v % period;
         *v /= period;

@@ -14,7 +14,7 @@ pub struct Gamestate {
     pub unit: i32,
     pub unit_template_id: i32,
     pub flags: HashMap<String, Date>,
-    pub start_date: (), // XXX: Date
+    pub start_date: Date,
     pub map_area_data: HashMap<String, ()>,
     pub total_military_power: f64,
     pub average_military_power: f64,
@@ -87,9 +87,9 @@ pub struct TradeNode {
     #[optional] pub top_provinces: Vec<String>,
     #[optional] pub top_provinces_values: Vec<FixedPoint>,
     #[optional] pub top_power: Vec<String>,
-    #[optional] pub top_power_values: Vec<String>,
+    #[optional] pub top_power_values: Vec<FixedPoint>,
     #[optional] pub trade_company_region: bool,
-    pub most_recent_treasure_ship_passage: (), // XXX: Date
+    pub most_recent_treasure_ship_passage: Date,
     #[collect] pub country_info: HashMap<String, CountryTradeNode>,
 }
 
@@ -119,8 +119,10 @@ pub struct CountryTradeNode {
     #[optional] pub t_out: FixedPoint,
     #[optional] pub t_to: HashMap<String, FixedPoint>,
     #[optional] pub trading_policy: String,
-    #[optional] pub trading_policy_date: (), // XXX: Date
+    #[optional] pub trading_policy_date: Date,
     #[optional] pub modifier: (),
+    #[optional] pub privateer_mission: FixedPoint,
+    #[optional] pub privateer_money: FixedPoint,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -139,8 +141,8 @@ pub struct Country {
     #[optional] pub technology_cost: FixedPoint,
     #[optional] pub num_of_age_objectives: i32,
     #[repeated] pub active_age_ability: Vec<String>,
-    #[optional] pub last_focus_move: (), // Date
-    #[optional] pub last_sent_alliance_offer: (), // Date
+    #[optional] pub last_focus_move: Date,
+    #[optional] pub last_sent_alliance_offer: Date,
     #[optional] pub history: (),
     #[optional] pub flags: HashMap<String, Date>,
     #[optional] pub hidden_flags: HashMap<String, Date>,
@@ -176,6 +178,7 @@ pub struct Country {
     #[optional] pub secondary_religion: String,
     #[optional] pub religious_school: String,
     #[optional] pub dominant_religion: String,
+    #[optional] pub fervor: (),
     #[optional] pub technology_group: String,
     #[optional] pub liberty_desire: FixedPoint,
     #[repeated] pub temporary_liberty_desire: Vec<()>,
@@ -201,7 +204,7 @@ pub struct Country {
     #[repeated] pub federation_friends: Vec<String>,
     #[repeated] pub coalition_against_us: Vec<String>,
     #[optional] pub coalition_target: String,
-    #[optional] pub coalition_date: (), // Date
+    #[optional] pub coalition_date: Date,
     #[repeated] pub preferred_coalition_against_us: Vec<String>,
     #[optional] pub preferred_coalition_target: String,
     #[optional] pub preferred_coalition_score: FixedPoint,
@@ -212,7 +215,7 @@ pub struct Country {
     #[optional] pub is_at_war: bool,
     #[optional] pub at_war_with_other_religious_group: bool,
     #[repeated] pub effective_score_impact: Vec<()>,
-    #[optional] pub last_election: (), // Date
+    #[optional] pub last_election: Date,
     #[optional] pub delayed_treasure: FixedPoint,
     #[optional] pub current_power_projection: FixedPoint,
     #[optional] pub great_power_score: FixedPoint,
@@ -221,7 +224,7 @@ pub struct Country {
     #[optional] pub num_of_non_rival_trade_embargos: i32,
     #[optional] pub preferred_emperor: String,
     #[optional] pub is_elector: bool,
-    #[optional] pub last_hre_vote: (), // Date
+    #[optional] pub last_hre_vote: Date,
     pub navy_strength: f64,
     #[optional] pub parliament: (),
     #[optional] pub total_war_worth: i32,
@@ -317,7 +320,7 @@ pub struct Country {
     #[optional] pub rebels_in_country: Vec<i32>,
     #[optional] pub war_exhaustion: FixedPoint,
     #[optional] pub monthly_war_exhaustion: FixedPoint,
-    #[optional] pub last_bankrupt: (), // Date
+    #[optional] pub last_bankrupt: Date,
     pub can_take_wartaxes: bool,
     pub land_maintenance: FixedPoint,
     pub naval_maintenance: FixedPoint,
@@ -325,7 +328,7 @@ pub struct Country {
     pub missionary_maintenance: FixedPoint,
     #[optional] pub army_tradition: FixedPoint,
     #[optional] pub navy_tradition: FixedPoint,
-    pub last_war_ended: (), // Date
+    pub last_war_ended: Date,
     pub num_uncontested_cores: i32,
     pub ledger: (),
     pub loan_size: i32,
@@ -383,8 +386,8 @@ pub struct Country {
     #[optional] pub is_great_power: bool,
     #[optional] pub wants_to_be_great_power: bool,
     #[optional] pub wants_to_be_great_power_next: bool,
-    pub inauguration: (), // Date
-    #[optional] pub last_migration: (), // Date
+    pub inauguration: Date,
+    #[optional] pub last_migration: Date,
     #[repeated] pub previous_monarch: Vec<()>,
     pub ai: (),
     #[optional] pub assigned_estates: bool,
@@ -396,7 +399,7 @@ pub struct Country {
     #[repeated] pub delayed_event: Vec<()>,
     #[optional] pub blockaded_percent: FixedPoint,
     #[optional] pub native_policy: i32,
-    #[optional] pub anti_nation_ruining_end_date: (), // XXX: Date
+    #[optional] pub anti_nation_ruining_end_date: Date,
     #[optional] pub spy_propensity: FixedPoint,
     pub losses: (),
     #[optional] pub adm_spent_indexed: (),
@@ -410,6 +413,38 @@ pub struct Country {
     pub historic_stats_cache: (),
     pub country_missions: (),
     #[optional] pub government_reform_progress: FixedPoint,
+
+    // Unsorted entries:
+    #[optional] pub call_for_peace: FixedPoint,
+    #[optional] pub current_icon: i32,
+    #[optional] pub forced_break_alliance_date: Date,
+    #[optional] pub has_friendly_reformation_center: bool,
+    #[optional] pub has_privateers: bool,
+    #[optional] pub icon_start_date: Date,
+    #[optional] pub last_conversion: Date,
+    #[optional] pub last_conversion_secondary: Date,
+    #[optional] pub last_sacrifice: Date,
+    #[optional] pub last_sold_province: Date,
+    #[optional] pub naval_doctrine: String,
+    #[optional] pub num_of_janissaries: i32,
+    #[optional] pub num_of_overseas: i32,
+    #[optional] pub num_ships_privateering: i32,
+    #[optional] pub saved_names: (),
+    #[optional] pub tribal_allegiance: FixedPoint,
+    #[optional] pub wartax: i32,
+    #[optional] pub condottieri_client: Vec<String>,
+    #[optional] pub hired_condottieri_from: Vec<String>,
+    #[repeated] pub previous_country_tags: Vec<String>,
+    #[optional] pub colonists: (),
+    #[optional] pub cooldowns: (),
+    #[optional] pub disaster_started: Vec<i32>,
+    #[optional] pub disaster_progress: Vec<FixedPoint>,
+    #[repeated] pub ignore_decision: Vec<String>,
+    #[optional] pub colonial_core: i32,
+    #[optional] pub golden_era_date: Date,
+    #[optional] pub diplomacy: (), // Or is this repeated?
+    #[optional] pub harmonization_progress: FixedPoint,
+    #[optional] pub harmonizing_with_religion: String,
 }
 
 #[derive(ParadoxParse, Default)]

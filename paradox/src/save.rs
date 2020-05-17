@@ -35,20 +35,20 @@ impl <R: Read> BinaryLexer<R> {
             0x000c => {
                 let val = self.reader.read_i32::<LittleEndian>()?;
                 self.offset += 4;
-                Token::String(val.to_string())
+                Token::Integer(val)
             },
             0x000d => {
                 // Fixed point notation.
                 let val = self.reader.read_i32::<LittleEndian>()?;
                 self.offset += 4;
-                Token::String(format!("{}.{:03}", val / 1000, val.abs() % 1000))
+                Token::Fixed(FixedPoint(val))
             },
             0x000e => {
                 let val = self.reader.read_u8()?;
                 self.offset += 1;
                 match val {
-                    0 => Token::String("no".into()),
-                    1 => Token::String("yes".into()),
+                    0 => Token::Bool(false),
+                    1 => Token::Bool(true),
                     _ => return Err(ParseError::Lexer(val.to_string()))
                 }
             },
@@ -65,13 +65,13 @@ impl <R: Read> BinaryLexer<R> {
             0x0014 => {
                 let val = self.reader.read_u32::<LittleEndian>()?;
                 self.offset += 4;
-                Token::String(val.to_string())
+                Token::Unsigned(val)
             },
             0x001b => {
                 Token::Interned("name")
             },
             0x0167 => {
-                // A fixed pointer number, with a base of 1 << 16.
+                // A fixed point number, with a base of 1 << 16.
                 let val = self.reader.read_i64::<LittleEndian>()?;
                 self.offset += 8;
                 // As long as the mantissa is small enough, we can represent
@@ -87,7 +87,7 @@ impl <R: Read> BinaryLexer<R> {
                 // by doing the exponent/mantissa manipulation ourselves, but
                 // it's not worth the code complexity.
                 let val = (val as f64) / 65536.0;
-                Token::String(val.to_string())
+                Token::Float(val)
             },
             0x0020..=0xffff => {
                 let s = include!("binary_tokens.rs");

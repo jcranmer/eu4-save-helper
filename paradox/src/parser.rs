@@ -4,7 +4,7 @@ use std::fs::File;
 use std::path::Path;
 use thiserror::Error;
 
-const ERR_ON_INVALID_INPUT : bool = true;
+const ERR_ON_INVALID_INPUT : bool = false;
 
 type Result<T> = std::result::Result<T, ParseError>;
 
@@ -14,62 +14,54 @@ type Result<T> = std::result::Result<T, ParseError>;
 // between games (and since I don't own all of them, I can't test all of the
 // issues here).
 
-pub enum UnparsedValue {
-    Complex {
-        level: u32
-    },
-    Simple(String)
-}
-
-impl UnparsedValue {
-    fn make_complex(parser: &Parser) -> Self {
-        Self::Complex {
-            level: parser.depth
-        }
-    }
-
-    pub fn into_string(self) -> Result<String> {
+pub type UnparsedValue = Token;
+impl Token {
+    /// Return true if this is a simple value (string, integer, etc.).
+    fn is_simple_value(&self) -> bool {
         match self {
-            Self::Complex{ level: _ } =>
-                Err(ParseError::Parse(Token::LBrace)),
-            Self::Simple(s) => Ok(s)
+            Self::LBrace => false,
+            Self::RBrace | Self::Eq => false,
+            _ => true
         }
     }
 
-    pub fn next_key_value_pair<'a>(&mut self, parser: &'a mut Parser
-                                ) -> Result<Option<ValuePair<'a>>> {
-        let level = match self {
-            Self::Complex { level } => *level,
-            Self::Simple(s) =>
-                return Err(ParseError::Parse(Token::String(s.clone())))
-        };
-
-        if level > parser.depth {
-            Ok(None)
-        } else {
-            parser.get_value()
+    /// Convert the token into a string if it can be done.
+    pub fn try_to_string(&self) -> Result<&str> {
+        match self {
+            Self::String(s) => Ok(&s),
+            Self::Interned(s) => Ok(&s),
+            t => Err(ParseError::Parse(t.clone()))
         }
     }
 
-    pub fn drain(self, parser: &mut Parser) -> Result<()> {
-        let mut discard = ();
-        discard.read_from(parser, self)
-    }
-
-    pub fn validation_error(&self, class_name: &'static str, field: &str,
-                            message: &str,
-                            fatal: bool) -> Result<()> {
-        let msg = format!("{}/{}: {}", class_name, field, message);
-        if fatal || ERR_ON_INVALID_INPUT {
-            Err(ParseError::Constraint(msg))
-        } else {
-            eprintln!("warning: {}", msg);
-            Ok(())
+    /// Return an error if the underlying value is not a complex (bracketed)
+    /// value.
+    pub fn expect_complex(self) -> Result<()> {
+        match self {
+            Self::LBrace => Ok(()),
+            t => Err(ParseError::Parse(t))
         }
     }
 }
 
-pub type ValuePair<'a> = (Option<Cow<'a, str>>, UnparsedValue);
+impl From<Token> for Cow<'static, str> {
+    fn from(t:Token) -> Cow<'static, str> {
+        match t {
+            Token::LBrace | Token::RBrace | Token::Eq =>
+                panic!("Shouldn't call this method if it's not a simple value"),
+            Token::String(s) => s.into(),
+            Token::Interned(s) => s.into(),
+            Token::Bool(b) => (if b { "yes " } else { "no" }).into(),
+            Token::Fixed(f) => f.to_string().into(),
+            Token::Float(f) => f.to_string().into(),
+            Token::Integer(i) => i.to_string().into(),
+            Token::Unsigned(i) => i.to_string().into()
+        }
+    }
+
+}
+
+pub type ValuePair = (Option<Cow<'static, str>>, UnparsedValue);
 
 pub trait ParadoxParse {
     fn read_from(&mut self, parser: &mut Parser,
@@ -81,14 +73,19 @@ pub trait FromParadoxKeyPair : Sized {
                 value: UnparsedValue) -> Result<Self>;
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     LBrace,
     RBrace,
     Eq,
-    // XXX: simple value type is probably better
     String(String),
-    Interned(&'static str)
+    Interned(&'static str),
+    // Special binary token types. We don't parse these in the text lexer.
+    Bool(bool),
+    Fixed(crate::FixedPoint),
+    Float(f64),
+    Integer(i32),
+    Unsigned(u32)
 }
 
 pub trait Lexer {
@@ -240,8 +237,7 @@ impl Parser {
     }
 
     pub fn parse(mut self, result: &mut dyn ParadoxParse) -> Result<()> {
-        let unparsed = UnparsedValue::make_complex(&self);
-        result.read_from(&mut self, unparsed)
+        result.read_from(&mut self, Token::LBrace)
             .or_else(|err| {
                 eprintln!("Error at {}", self.lexer.get_location_info());
                 Err(err)
@@ -266,22 +262,19 @@ impl Parser {
         self.saved_token = Some(token);
     }
 
-    fn try_key_eq<'a>(&mut self, key: Cow<'a, str>) -> Result<ValuePair<'a>> {
+    fn try_key_eq(&mut self, key: Token) -> Result<ValuePair> {
         Ok(match self.get_token()? {
             // EOF: it's okay if we're at top depth.
-            None if self.depth == 0 =>
-                (None, UnparsedValue::Simple(key.into_owned())),
+            None if self.depth == 0 => (None, key),
             None => return Err(ParseError::Eof),
 
             // Eq: we are to be followed by a value.
             Some(Token::Eq) => {
-                (Some(key), match self.get_token()? {
-                    Some(Token::String(value)) => UnparsedValue::Simple(value),
-                    Some(Token::Interned(value)) =>
-                        UnparsedValue::Simple(value.into()),
+                (Some(key.into()), match self.get_token()? {
+                    Some(t) if t.is_simple_value() => t,
                     Some(Token::LBrace) => {
                         self.depth += 1;
-                        UnparsedValue::make_complex(self)
+                        Token::LBrace
                     },
                     None => return Err(ParseError::Eof),
                     Some(t) => return Err(ParseError::Parse(t))
@@ -292,19 +285,19 @@ impl Parser {
             // been present.
             Some(Token::LBrace) => {
                 self.depth += 1;
-                (Some(key), UnparsedValue::make_complex(self))
+                (Some(key.into()), Token::LBrace)
             },
 
             // For anything else, unget the character and return the
             // value as an untyped thing.
             Some(t) => {
                 self.unget(t);
-                (None, UnparsedValue::Simple(key.into_owned()))
+                (None, key)
             }
         })
     }
 
-    fn get_value(&mut self) -> Result<Option<ValuePair>> {
+    pub fn get_next_value(&mut self) -> Result<Option<ValuePair>> {
         match self.get_token()? {
             None if self.depth == 0 => Ok(None),
             None => Err(ParseError::Eof),
@@ -314,16 +307,44 @@ impl Parser {
             },
             Some(Token::LBrace) => {
                 self.depth += 1;
-                Ok(Some((None, UnparsedValue::make_complex(self))))
+                Ok(Some((None, Token::LBrace)))
             },
-            Some(Token::String(key)) => {
-                self.try_key_eq(key.into()).map(|val| Some(val))
-            },
-            Some(Token::Interned(key)) => {
-                self.try_key_eq(key.into()).map(|val| Some(val))
-            },
+            Some(t) if t.is_simple_value() =>
+                self.try_key_eq(t).map(|val| Some(val)),
             Some(t) => Err(ParseError::Parse(t))
         }
+    }
+
+    pub fn validation_error(&mut self, class_name: &'static str, field: &str,
+                            message: &str, fatal: bool,
+                            value: Option<Token>) -> Result<()> {
+        let type_hint = match value {
+            Some(Token::LBrace) => " (scope)",
+            Some(Token::Integer(_)) => " (i32)",
+            Some(Token::Unsigned(_)) => " (u32)",
+            Some(Token::Float(_)) => " (f64)",
+            Some(Token::Fixed(_)) => " (FixedPoint)",
+            Some(Token::Bool(_)) => " (bool)",
+            Some(Token::String(_)) => " (String)",
+            Some(Token::Interned(_)) => " (String)",
+            _ => "",
+        };
+        let msg = format!("{}/{}{}: {}", class_name, field, type_hint, message);
+        if fatal || ERR_ON_INVALID_INPUT {
+            Err(ParseError::Constraint(msg))
+        } else {
+            println!("warning: {}", msg);
+            if let Some(value) = value {
+                let mut discard = ();
+                discard.read_from(self, value)?;
+            }
+            Ok(())
+        }
+    }
+
+    pub fn drain(&mut self, value: Token) -> Result<()> {
+        let mut discard = ();
+        discard.read_from(self, value)
     }
 }
 

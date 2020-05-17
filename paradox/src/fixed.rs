@@ -4,7 +4,7 @@ use std::fmt;
 /// This means that 0.001 + 0.001 = 0.002--there are three decimal places of
 /// accuracy.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Default)]
-pub struct FixedPoint(i32);
+pub struct FixedPoint(pub(crate) i32);
 
 impl fmt::Display for FixedPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

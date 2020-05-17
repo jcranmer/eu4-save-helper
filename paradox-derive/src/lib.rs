@@ -51,20 +51,20 @@ fn get_tag(field: &Field, tag: &'static str) -> Option<TokenStream> {
         })
 }
 
-fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
+fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
     let name = &field.ident.as_ref().expect("unnamed field?");
     let stringy_name = stringify(name);
 
     // This type of field sets the default body instead.
     if has_tag(field, "collect") {
         let body = quote_spanned!{ field.span() =>
-            Some((Some(key), value)) => {
+            Some(key) => {
                 use std::collections::hash_map::Entry;
                 let entry = self.#name.entry(key.into_owned());
                 match entry {
                     Entry::Occupied(ref e) =>
-                        value.validation_error(stringify!(#class), &e.key(),
-                            "multiple definitions found", false)?,
+                        parser.validation_error(class_name, &e.key(),
+                            "multiple definitions found", false, None)?,
                     _ => ()
                 }
                 entry.or_default().read_from(parser, value)?;
@@ -76,7 +76,7 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
     // This type of field sets the default body instead.
     if has_tag(field, "modifiers") {
         let body = quote_spanned!{ field.span() =>
-            Some((Some(key), value)) => {
+            Some(key) => {
                 let key = key.into_owned();
                 self.#name.push(parser.try_parse(&key, value)?);
             },
@@ -93,13 +93,13 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
         Some(format_ident!("seen_{}", name))
     };
     let field_match = quote_spanned!{field.span() =>
-        Some((Some(key), value)) if key == #stringy_name
+        Some(key) if key == #stringy_name
     };
     let check_presence = if let Some(ref check_name) = check_name {
         Some(quote_spanned!{field.span() =>
             if #check_name {
-                value.validation_error(stringify!(#class), #stringy_name,
-                    "multiple definitions found", true)?;
+                parser.validation_error(class_name, #stringy_name,
+                    "multiple definitions found", true, None)?;
             }
             #check_name = true;
         })
@@ -123,16 +123,14 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
             #field_match => {
                 #check_presence
                 let vec = &mut self.#name;
-                loop {
-                    let next_pair = val.next_key_value_pair(parser)?;
-                    match next_pair {
-                        None => break,
-                        Some((None, value)) => {
-                            value.validation_error(
-                                stringify!(#class), "", "bad key", false)?;
-                            value.drain(parser)?;
+                value.expect_complex()?;
+                while let Some((key, value)) = parser.get_next_value()? {
+                    match key {
+                        None => {
+                            parser.validation_error(class_name, "",
+                                "bad key", false, Some(value))?;
                         },
-                        Some((Some(key), value)) => {
+                        Some(key) => {
                             let key = key.into_owned();
                             vec.push(parser.try_parse(&key, value)?);
                         }
@@ -170,15 +168,15 @@ fn handle_field<'a>(field: &'a Field, class: &Ident) -> FieldHandler<'a> {
 fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     let name = &input.ident;
     let body : Vec<_> = match &input.data {
-        Data::Struct(data) => data.fields.iter().map(|f| handle_field(f, name)).collect(),
+        Data::Struct(data) => data.fields.iter().map(handle_field).collect(),
         _ => return Err(Error::new(input.span(),
                                    "Can only derive ParadoxParse for structs"))
     };
 
     let mut default_body = quote! {
-        Some((Some(key), val)) => {
-            println!("{}/{}", stringify!(#name), key);
-            val.drain(parser)?;
+        Some(key) => {
+            parser.validation_error(class_name, &key, "unknown in struct",
+                                    false, Some(value))?;
         },
     };
     let mut match_statements = Vec::new();
@@ -196,9 +194,8 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
             prologue.push(quote! { let mut #check_name = false; });
             epilogue.push(quote! {
                 if !#check_name {
-                    val.validation_error(stringify!(#name),
-                        #stringy_name, "not found in definition",
-                        false)?;
+                    parser.validation_error(class_name, #stringy_name,
+                        "not found in definition", false, None)?;
                 }
             });
         }
@@ -208,17 +205,16 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
         #[automatically_derived]
         impl paradox::ParadoxParse for #name {
             fn read_from(&mut self, parser: &mut paradox::Parser,
-                         mut val: paradox::UnparsedValue)
+                         val: paradox::UnparsedValue)
                     -> Result<(), paradox::ParseError> {
+                let class_name = std::any::type_name::<Self>();
                 #( #prologue )*
-                loop {
-                    let next_pair = val.next_key_value_pair(parser)?;
-                    match next_pair {
-                        None => break,
-                        Some((None, val)) => {
-                            val.validation_error(stringify!(#name), "",
-                                "bad key", false)?;
-                            val.drain(parser)?;
+                val.expect_complex()?;
+                while let Some((key, value)) = parser.get_next_value()? {
+                    match key {
+                        None => {
+                            parser.validation_error(class_name, "",
+                                "bad key", false, Some(value))?;
                         },
                         #( #match_statements, )*
                         #default_body
@@ -275,16 +271,4 @@ pub fn modifier_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 pub fn effect_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let table = parse_macro_input!(input as tables::ScopedEffectList);
     table.generate_code().into()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_input() {
-        let input = quote!{ struct Foo { field: u32 }};
-        let input = syn::parse2::<DeriveInput>(input).unwrap();
-        println!("{}", implement_parse_method(&input).unwrap());
-    }
 }

@@ -241,9 +241,8 @@ impl <T: TableEntry> ScopedList<T> {
                     match key {
                         #( #match_clauses ),*
                         key => {
-                            value.validation_error(stringify!(#enum_name),
-                                key,
-                                "no definition found", true)?;
+                            parser.validation_error(stringify!(#enum_name),
+                                key, "no definition found", true, Some(value))?;
                             panic!("Should not reach this point");
                         }
                     }
