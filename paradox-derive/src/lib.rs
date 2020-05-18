@@ -55,15 +55,29 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
     let name = &field.ident.as_ref().expect("unnamed field?");
     let stringy_name = stringify(name);
 
+    // Get the type as a string. This isn't fully accurate, but it's good enough
+    // for any checks we need to do.
+    let ty = match &field.ty {
+        &Type::Path(ref p) => p.path.clone().into_token_stream().to_string(),
+        _ => "".into()
+    };
+
     // This type of field sets the default body instead.
     if has_tag(field, "collect") {
+        let make_key = if ty.contains("IdKey") {
+            quote_spanned!{field.ty.span() =>
+                IdKey::new_via_gamedata(parser.get_game_data(), &key)
+            }
+        } else {
+            quote_spanned!{field.ty.span() => key.into_owned() }
+        };
         let body = quote_spanned!{ field.span() =>
             Some(key) => {
                 use std::collections::hash_map::Entry;
-                let entry = self.#name.entry(key.into_owned());
+                let entry = self.#name.entry(#make_key);
                 match entry {
                     Entry::Occupied(ref e) =>
-                        parser.validation_error(class_name, &e.key(),
+                        parser.validation_error(class_name, &format!("{:?}", e.key()),
                             "multiple definitions found", false, None)?,
                     _ => ()
                 }
@@ -105,13 +119,6 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
         })
     } else {
         None
-    };
-
-    // Get the type as a string. This isn't fully accurate, but it's good enough
-    // for any checks we need to do.
-    let ty = match &field.ty {
-        &Type::Path(ref p) => p.path.clone().into_token_stream().to_string(),
-        _ => "".into()
     };
 
     // Build the body of the match.

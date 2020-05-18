@@ -1,4 +1,4 @@
-use crate::Date;
+use crate::{BoxedValue, Date, FixedPoint, IdKey, IdRef};
 use crate::parser::*;
 use std::collections::HashMap;
 use std::error::Error as StdError;
@@ -42,7 +42,7 @@ from_string!{u32, Unsigned}
 from_string!{f32}
 from_string!{f64, Float}
 from_string!{String}
-from_string!{crate::FixedPoint, Fixed}
+from_string!{FixedPoint, Fixed}
 
 impl ParadoxParse for Date {
     fn read_from(&mut self, _: &mut Parser, val: Token) -> ParseResult {
@@ -177,6 +177,60 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
                     let mut parsed = T::default();
                     parsed.read_from(parser, v)?;
                     if self.insert(key.clone(), parsed).is_some() {
+                        return Err(ParseError::Constraint(
+                            format!("Duplicate key {} in map", key)));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl <I, T: ParadoxParse + Default> ParadoxParse for HashMap<IdKey<I>, T>
+    where I: BoxedValue, IdKey<I> : Eq + std::hash::Hash
+{
+    fn read_from(&mut self, parser: &mut Parser, val: Token) -> ParseResult {
+        val.expect_complex()?;
+        while let Some((key, v)) = parser.get_next_value()? {
+            match key {
+                None => {
+                    return Err(ParseError::Constraint(
+                            format!("Unexpected keyless value in map")));
+                },
+                Some(key) => {
+                    let id = IdKey::new(
+                        parser.get_game_data().get_id_box_mut::<I>(), &key);
+                    let mut parsed = T::default();
+                    parsed.read_from(parser, v)?;
+                    if self.insert(id, parsed).is_some() {
+                        return Err(ParseError::Constraint(
+                            format!("Duplicate key {} in map", key)));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl <I, T: ParadoxParse + Default> ParadoxParse for HashMap<IdRef<I>, T>
+    where I: BoxedValue, IdRef<I>: Default
+{
+    fn read_from(&mut self, parser: &mut Parser, val: Token) -> ParseResult {
+        val.expect_complex()?;
+        while let Some((key, v)) = parser.get_next_value()? {
+            match key {
+                None => {
+                    return Err(ParseError::Constraint(
+                            format!("Unexpected keyless value in map")));
+                },
+                Some(key) => {
+                    let mut id: IdRef<I> = Default::default();
+                    id.read_from(parser, Token::String(key.clone().into_owned()))?;
+                    let mut parsed = T::default();
+                    parsed.read_from(parser, v)?;
+                    if self.insert(id, parsed).is_some() {
                         return Err(ParseError::Constraint(
                             format!("Duplicate key {} in map", key)));
                     }

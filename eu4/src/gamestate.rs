@@ -1,4 +1,5 @@
-use paradox::{Date, FixedPoint, ParadoxParse};
+use crate::*;
+use paradox::{Date, FixedPoint, IdRef, ParadoxParse};
 use std::collections::HashMap;
 
 #[derive(ParadoxParse, Default)]
@@ -34,7 +35,7 @@ pub struct Gamestate {
     pub hre_leagues_status: i32,
     pub hre_religion_status: i32,
     #[repeated] pub trade_league: Vec<()>,
-    pub religions: HashMap<String, ()>,
+    pub religions: HashMap<String, ()>, // noreligion is a key here...
     pub religion_instance_data: HashMap<String, ()>,
     pub fired_events: (),
     pub pending_events: (),
@@ -174,10 +175,10 @@ pub struct Country {
     #[optional] pub primary_culture: String,
     #[optional] pub dominant_culture: String,
     #[repeated] pub accepted_culture: Vec<String>,
-    #[optional] pub religion: String,
-    #[optional] pub secondary_religion: String,
+    #[optional] pub religion: IdRef<Religion>,
+    #[optional] pub secondary_religion: IdRef<Religion>,
     #[optional] pub religious_school: String,
-    #[optional] pub dominant_religion: String,
+    #[optional] pub dominant_religion: IdRef<Religion>,
     #[optional] pub fervor: (),
     #[optional] pub technology_group: String,
     #[optional] pub liberty_desire: FixedPoint,
@@ -444,7 +445,7 @@ pub struct Country {
     #[optional] pub golden_era_date: Date,
     #[optional] pub diplomacy: (), // Or is this repeated?
     #[optional] pub harmonization_progress: FixedPoint,
-    #[optional] pub harmonizing_with_religion: String,
+    #[optional] pub harmonizing_with_religion: IdRef<Religion>,
 }
 
 #[derive(ParadoxParse, Default)]

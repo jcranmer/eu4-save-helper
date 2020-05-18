@@ -1,7 +1,7 @@
 use crate::{LocalizationKey, ProvinceRef, RgbColor};
 use crate::effects::CountryEffect;
 use crate::modifiers::{CountryModifier, ProvinceModifier};
-use paradox::{Date, ParadoxParse};
+use paradox::{Date, IdKey, ParadoxParse};
 use std::collections::HashMap;
 
 pub type ReligionList = HashMap<String, ReligiousGroup>;
@@ -30,7 +30,7 @@ pub struct ReligiousGroup {
     pub religious_schools: HashMap<String, ReligiousSchool>,
 
     #[collect]
-    pub religions: HashMap<String, Religion>
+    pub religions: HashMap<IdKey<Religion>, Religion>
 }
 
 #[derive(ParadoxParse, Default, Debug)]

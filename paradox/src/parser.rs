@@ -225,15 +225,20 @@ pub enum ParseError {
     Constraint(String)
 }
 
-pub struct Parser {
+pub struct Parser<'a> {
     lexer: Box<dyn Lexer>,
     depth: u32,
-    saved_token: Option<Token>
+    saved_token: Option<Token>,
+    game_data: &'a mut crate::GameData
 }
 
-impl Parser {
-    pub fn new(lexer: Box<dyn Lexer>) -> Parser {
-        Parser { lexer, depth: 0, saved_token: None }
+impl <'a> Parser<'a> {
+    pub fn new(lexer: Box<dyn Lexer>, game_data: &mut crate::GameData) -> Parser {
+        Parser { lexer, depth: 0, saved_token: None, game_data }
+    }
+
+    pub fn get_game_data(&mut self) -> &mut crate::GameData {
+        self.game_data
     }
 
     pub fn parse(mut self, result: &mut dyn ParadoxParse) -> Result<()> {
@@ -351,7 +356,8 @@ impl Parser {
 /// Load an entire directory of parseable files.
 ///
 /// All of the entries will be loaded in alphabetical order.
-pub fn load_directory(path: &Path, data: &mut dyn ParadoxParse) -> Result<()> {
+pub fn load_directory(path: &Path, data: &mut dyn ParadoxParse,
+                      gamedata: &mut crate::GameData) -> Result<()> {
     let mut files : Vec<_> = Default::default();
     if path.is_dir() {
         for entry in path.read_dir()? {
@@ -380,7 +386,7 @@ pub fn load_directory(path: &Path, data: &mut dyn ParadoxParse) -> Result<()> {
         let filename = path.to_string_lossy().into();
         let file = File::open(path)?;
         let lexer = TextLexer::new(file, filename);
-        Parser::new(Box::new(lexer)).parse(data)?;
+        Parser::new(Box::new(lexer), gamedata).parse(data)?;
     }
     Ok(())
 }
@@ -421,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parser() -> Result<(), ParseError> {
+    fn test_parser() -> Result<()> {
         let mut res : HashMap<String, i32> = Default::default();
         let lexer = make_reader(b"a=1 b=2");
         Parser::new(Box::new(lexer))

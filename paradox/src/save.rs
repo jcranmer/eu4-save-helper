@@ -115,7 +115,7 @@ impl <R: Read> Lexer for BinaryLexer<R> {
     }
 }
 
-pub fn load_savegame<T: ParadoxParse + Default>(path: &Path)
+pub fn load_savegame<T: ParadoxParse + Default>(path: &Path, game_data: &mut GameData)
         -> Result<T, ParseError> {
     let mut archive = ZipArchive::new(File::open(path)?)?;
     // This is really bad behavior, but we require a 'static bounds on the
@@ -141,7 +141,7 @@ pub fn load_savegame<T: ParadoxParse + Default>(path: &Path)
         return Err(ParseError::Parse(Token::String(String::from_utf8_lossy(&magic).into())));
     };
 
-    Parser::new(lexer).parse(&mut gamestate)?;
+    Parser::new(lexer, game_data).parse(&mut gamestate)?;
 
     Ok(gamestate)
 }
