@@ -11,6 +11,7 @@ mod modifiers;
 mod game;
 mod gamestate;
 mod religion;
+mod scope;
 mod trade;
 
 pub use conditions::*;
@@ -20,6 +21,7 @@ pub use effects::*;
 pub use events::*;
 pub use modifiers::*;
 pub use game::*;
-pub use gamestate::*;
+pub use gamestate::Gamestate;
 pub use religion::*;
+pub use scope::*;
 pub use trade::*;

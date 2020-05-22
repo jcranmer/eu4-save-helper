@@ -51,3 +51,4 @@ impl_box!(crate::Superregion, 5);
 impl_box!(crate::Continent, 6);
 impl_box!(crate::CultureGroup, 7);
 impl_box!(crate::Culture, 8);
+impl_box!(crate::TradeNode, 9);

@@ -44,6 +44,14 @@ impl GameData {
         }
         &mut self.id_boxes[index]
     }
+
+    pub fn get_id_box<T: BoxedValue>(&self) -> &IdBox {
+        let index : usize = T::TYPE_VALUE.try_into().unwrap();
+        if index >= self.id_boxes.len() {
+            panic!("Cannot call this method without setting up all boxes!");
+        }
+        &self.id_boxes[index]
+    }
 }
 
 pub trait BoxedValue {
@@ -92,10 +100,18 @@ impl <T: BoxedValue> IdKey<T> {
     }
 }
 
-#[derive(Ord, PartialOrd, Copy, Clone, Default)]
+#[derive(Ord, PartialOrd, Copy, Clone)]
 pub struct IdRef<T: BoxedValue> {
     index: u16,
     _data: PhantomData<T>
+}
+
+impl <T: BoxedValue> IdRef<T> {
+    pub fn from_str(key: &str, data: &GameData) -> Option<Self> {
+        let id_box = data.get_id_box::<T>();
+        id_box.get_index(key)
+            .map(|index| Self { index, _data: PhantomData })
+    }
 }
 
 impl <T: BoxedValue> std::fmt::Debug for IdRef<T> {
@@ -109,6 +125,12 @@ impl <T: BoxedValue> std::fmt::Debug for IdRef<T> {
 impl <T: BoxedValue> std::hash::Hash for IdRef<T> {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
         self.index.hash(hasher);
+    }
+}
+
+impl <T: BoxedValue> Default for IdRef<T> {
+    fn default() -> Self {
+        Self { index: 0, _data: PhantomData }
     }
 }
 

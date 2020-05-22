@@ -144,15 +144,26 @@ impl TableEntry for Condition {
 
     fn make_special_decl(scope: &Ident) -> TokenStream {
         let enum_name = format_ident!("{}{}", scope, Self::ENUM_NAME);
-        quote! { Special(paradox::SpecialCondition<#enum_name>) }
+        let scope_name = format_ident!("{}Scope", scope);
+        quote! {
+            Scope(crate::#scope_name),
+            Special(paradox::SpecialCondition<#enum_name>)
+        }
     }
 
     fn early_parse(scope: &Ident) -> TokenStream {
         let enum_name = format_ident!("{}{}", scope, Self::ENUM_NAME);
+        let scope_name = format_ident!("{}Scope", scope);
         quote! {
             if let Some(val) = paradox::SpecialCondition::<#enum_name>
                     ::try_parse(parser, key, value.clone())? {
                 return Ok(Self::Special(val));
+            }
+            if let Some(val) = crate::#scope_name::get_scope(parser, key)? {
+                // XXX: Actually parse the inner scope.
+                let mut drain = ();
+                drain.read_from(parser, value)?;
+                return Ok(Self::Scope(val));
             }
         }
     }

@@ -1,5 +1,5 @@
 use crate::{ProvinceRef, RgbColor};
-use paradox::ParadoxParse;
+use paradox::{IdKey, ParadoxParse};
 
 #[derive(ParadoxParse, Default, Debug)]
 pub struct TradeNode {
@@ -24,4 +24,4 @@ pub struct TradeEdge {
     control: Vec<f64>
 }
 
-pub type TradeNodeList = std::collections::HashMap<String, TradeNode>;
+pub type TradeNodeList = std::collections::HashMap<IdKey<TradeNode>, TradeNode>;

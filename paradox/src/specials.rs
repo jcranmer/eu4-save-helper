@@ -1,8 +1,13 @@
 use crate::{FromParadoxKeyPair, Parser, ParseError, Token};
 type Result<T> = std::result::Result<T, ParseError>;
 
+pub trait Condition : FromParadoxKeyPair {
+}
+
+pub trait Scope { }
+
 #[derive(Debug)]
-pub enum SpecialCondition<S> {
+pub enum SpecialCondition<S: Condition> {
     Not(Vec<S>),
     And(Vec<S>),
     Or(Vec<S>),
@@ -28,7 +33,7 @@ pub fn parse_key_pair_list<S: FromParadoxKeyPair>(parser: &mut Parser,
     Ok(vec)
 }
 
-impl <S: FromParadoxKeyPair> SpecialCondition<S> {
+impl <S: Condition> SpecialCondition<S> {
     pub fn try_parse(parser: &mut Parser, key: &str,
                      value: Token) -> Result<Option<Self>> {
         match key {

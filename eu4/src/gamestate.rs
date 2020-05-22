@@ -69,7 +69,7 @@ pub struct Trade {
 
 #[derive(ParadoxParse, Default)]
 pub struct TradeNode {
-    pub definitions: String,
+    pub definitions: IdRef<crate::TradeNode>,
     #[optional] pub current: FixedPoint,
     #[optional] pub local_value: FixedPoint,
     #[optional] pub outgoing: FixedPoint,
@@ -473,7 +473,7 @@ pub struct Province {
     #[optional] pub last_estate_grant: Date,
     #[optional] pub cores: Vec<CountryRef>,
     #[optional] pub claims: Vec<CountryRef>,
-    #[optional] pub trade: String,
+    #[optional] pub trade: IdRef<crate::TradeNode>,
     #[optional] pub unit: (),
     #[optional] pub spy_actions: (),
     #[optional] pub original_culture: IdRef<Culture>,

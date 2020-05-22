@@ -1,5 +1,4 @@
 use paradox::FixedPoint;
-use crate::{GameData, Gamestate};
 
 paradox::effect_list! {
     // This is h4x0rs, but it'll do for now...
