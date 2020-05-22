@@ -1,4 +1,4 @@
-use paradox::{IdKey, ParadoxParse, ParseError, Parser, Token};
+use paradox::{IdKey, IdRef, ParadoxParse, ParseError, Parser, Token};
 use std::collections::HashMap;
 
 type ParseResult = Result<(), ParseError>;
@@ -70,3 +70,16 @@ pub struct Country {
     #[optional] pub right_to_bear_arms: bool,
     #[optional] pub all_your_core_are_belong_to_us: bool,
 }
+
+#[derive(Default)]
+pub struct Area {}
+
+#[derive(ParadoxParse, Default)]
+pub struct Region {
+    #[optional] pub areas: Vec<IdRef<Area>>,
+    #[optional] pub monsoon: [(); 2]
+}
+
+pub struct Superregion {}
+
+pub struct Continent {}
