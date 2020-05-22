@@ -20,6 +20,9 @@ pub struct GameData {
     #[parse = "map/continent.txt"]
     continents: HashMap<IdKey<crate::Continent>, Vec<u32>>,
 
+    #[parse = "common/cultures"]
+    cultures: crate::CultureGroupList,
+
     #[parse = "common/religions"]
     religions: crate::ReligionList,
 
@@ -46,3 +49,5 @@ impl_box!(crate::Area, 3);
 impl_box!(crate::Region, 4);
 impl_box!(crate::Superregion, 5);
 impl_box!(crate::Continent, 6);
+impl_box!(crate::CultureGroup, 7);
+impl_box!(crate::Culture, 8);

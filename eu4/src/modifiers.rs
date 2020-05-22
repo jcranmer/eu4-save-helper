@@ -378,6 +378,6 @@ paradox::modifier_list! {
     modifier(Country, may_perform_slave_raid_on_same_religion, bool);
     modifier(Country, can_fabricate_for_vassals, bool);
 
-    //modifier(Country, has_banners, type(1));
-    //modifier(Province, local_has_banners, type(1));
+    modifier(Country, has_banners, i32);
+    modifier(Province, local_has_banners, i32);
 }
