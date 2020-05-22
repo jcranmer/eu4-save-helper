@@ -123,26 +123,14 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
 
     // Build the body of the match.
     let body = if ty.starts_with("Vec <") &&
-            (ty.ends_with("Modifier >") || ty.ends_with("Effect >")) {
+            (ty.ends_with("Modifier >") || ty.ends_with("Effect >") ||
+             ty.ends_with("Condition >")) {
         // List of modifiers are handled with a special parser, due to issues
         // doing so with other types.
         quote_spanned!{field.span() =>
             #field_match => {
                 #check_presence
-                let vec = &mut self.#name;
-                value.expect_complex()?;
-                while let Some((key, value)) = parser.get_next_value()? {
-                    match key {
-                        None => {
-                            parser.validation_error(class_name, "",
-                                "bad key", false, Some(value))?;
-                        },
-                        Some(key) => {
-                            let key = key.into_owned();
-                            vec.push(parser.try_parse(&key, value)?);
-                        }
-                    }
-                }
+                self.#name = paradox::parse_key_pair_list(parser, value)?;
             }
         }
     } else {
@@ -271,6 +259,26 @@ pub fn derive_game_data(input: proc_macro::TokenStream)
 #[proc_macro]
 pub fn modifier_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let table = parse_macro_input!(input as tables::ScopedModifierList);
+    table.generate_code().into()
+}
+
+/// Generate a set of condition enums and associated parsing.
+///
+/// This macro takes as input a table of conditions, such as:
+/// ```rust
+///   condition_list!{
+///     condition(Country, country_condition, FixedPoint);
+///   }
+/// ```
+///
+/// The first parameter is the kind of scope that the condition applies to.
+///
+/// The second parameter is the name of condition.
+///
+/// The third and final parameter is the type of the condition.
+#[proc_macro]
+pub fn condition_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let table = parse_macro_input!(input as tables::ScopedConditionList);
     table.generate_code().into()
 }
 

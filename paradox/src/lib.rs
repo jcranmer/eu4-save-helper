@@ -20,6 +20,7 @@ mod game;
 mod parser;
 mod parser_impl;
 mod save;
+mod specials;
 
 pub use date::*;
 pub use fixed::*;
@@ -27,6 +28,7 @@ pub use game::*;
 pub use interning::*;
 pub use parser::*;
 pub use save::*;
+pub use specials::*;
 
 use std::path::PathBuf;
 

@@ -9,6 +9,7 @@ use syn::spanned::Spanned;
 
 mod kw {
     syn::custom_keyword!(modifier);
+    syn::custom_keyword!(condition);
 }
 
 pub(crate) trait TableEntry : Parse {
@@ -18,6 +19,14 @@ pub(crate) trait TableEntry : Parse {
 
     fn parse_list(input: ParseStream) -> Result<Vec<Self>>;
     fn scope(&self) -> &Ident;
+
+    fn make_special_decl(_scope: &Ident) -> TokenStream {
+        TokenStream::new()
+    }
+
+    fn early_parse(_scope: &Ident) -> TokenStream {
+        TokenStream::new()
+    }
 }
 
 pub(crate) struct Modifier {
@@ -68,10 +77,82 @@ impl TableEntry for Modifier {
         let stringy_name = stringify(name);
         let ty = &self.ty;
         quote_spanned! { self.paren_token.span =>
-            key if key == #stringy_name => {
+            #stringy_name => {
                 let mut parsee : #ty = Default::default();
                 parsee.read_from(parser, value)?;
                 Ok(Self::#name(parsee))
+            }
+        }
+    }
+}
+
+pub(crate) struct Condition {
+    _modifier_token: kw::condition,
+    paren_token: token::Paren,
+    scope: Ident,
+    _comma1_token: Token![,],
+    name: Ident,
+    _comma2_token: Token![,],
+    ty: Type
+}
+
+impl Parse for Condition {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        Ok(Condition {
+            _modifier_token: input.parse()?,
+            paren_token: parenthesized!(content in input),
+            scope: content.parse()?,
+            _comma1_token: content.parse()?,
+            name: content.parse()?,
+            _comma2_token: content.parse()?,
+            ty: content.parse()?
+        })
+    }
+}
+
+impl TableEntry for Condition {
+    const ENUM_NAME : &'static str = "Condition";
+    fn scope(&self) -> &Ident {
+        &self.scope
+    }
+
+    fn parse_list(input: ParseStream) -> Result<Vec<Self>> {
+        type ConditionList = Punctuated<Condition, Token![;]>;
+        let raw_list = ConditionList::parse_terminated(input)?;
+        Ok(raw_list.into_iter().collect())
+    }
+
+    fn make_decl(&self) -> TokenStream {
+        let name = &self.name;
+        let ty = &self.ty;
+        quote! { #name(#ty) }
+    }
+
+    fn make_match_clause(&self) -> TokenStream {
+        let name = &self.name;
+        let stringy_name = stringify(name);
+        let ty = &self.ty;
+        quote_spanned! { self.paren_token.span =>
+            #stringy_name => {
+                let mut parsee : #ty = Default::default();
+                parsee.read_from(parser, value)?;
+                Ok(Self::#name(parsee))
+            }
+        }
+    }
+
+    fn make_special_decl(scope: &Ident) -> TokenStream {
+        let enum_name = format_ident!("{}{}", scope, Self::ENUM_NAME);
+        quote! { Special(paradox::SpecialCondition<#enum_name>) }
+    }
+
+    fn early_parse(scope: &Ident) -> TokenStream {
+        let enum_name = format_ident!("{}{}", scope, Self::ENUM_NAME);
+        quote! {
+            if let Some(val) = paradox::SpecialCondition::<#enum_name>
+                    ::try_parse(parser, key, value.clone())? {
+                return Ok(Self::Special(val));
             }
         }
     }
@@ -219,11 +300,13 @@ impl <T: TableEntry> ScopedList<T> {
         let enum_name = format_ident!("{}{}", scope, T::ENUM_NAME);
         let enum_decls = modifiers.iter()
             .map(T::make_decl);
+        let extra_decl = T::make_special_decl(scope);
         quote! {
             #[allow(non_camel_case_types)]
             #[derive(Debug)]
             pub enum #enum_name {
-                #( #enum_decls ),*
+                #( #enum_decls, )*
+                #extra_decl
             }
         }
     }
@@ -232,12 +315,14 @@ impl <T: TableEntry> ScopedList<T> {
         let enum_name = format_ident!("{}{}", scope, T::ENUM_NAME);
         let modifiers = &self.by_scopes[scope];
         let match_clauses = modifiers.iter().map(T::make_match_clause);
+        let early_parse = T::early_parse(scope);
         quote! {
             impl paradox::FromParadoxKeyPair for #enum_name {
                 fn try_from(parser: &mut paradox::Parser, key: &str,
                             value: paradox::UnparsedValue)
                             -> Result<Self, paradox::ParseError> {
                     use paradox::ParadoxParse;
+                    #early_parse
                     match key {
                         #( #match_clauses ),*
                         key => {
@@ -252,5 +337,6 @@ impl <T: TableEntry> ScopedList<T> {
     }
 }
 
+pub(crate) type ScopedConditionList = ScopedList<Condition>;
 pub(crate) type ScopedModifierList = ScopedList<Modifier>;
 pub(crate) type ScopedEffectList = ScopedList<Effect>;

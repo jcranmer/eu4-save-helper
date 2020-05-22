@@ -31,7 +31,7 @@ impl GameData {
     }
 
     /// Parse a directory (usually in $GAME/common/*.txt) into a parsable type.
-    pub fn parse_directory(&mut self, path: &'static str,
+    pub fn parse_directory(&mut self, path: &str,
                            target: &mut dyn ParadoxParse) -> Result<&mut Self> {
         crate::load_directory(&self.game_directory.join(path), target, self)?;
         Ok(self)
@@ -48,6 +48,7 @@ impl GameData {
 
 pub trait BoxedValue {
     const TYPE_VALUE: u32;
+    const DEFAULT_STRING: &'static str = "";
 }
 
 #[derive(Ord, PartialOrd, Copy, Clone)]
@@ -122,6 +123,11 @@ impl <T: BoxedValue> Eq for IdRef<T> { }
 impl <T: BoxedValue> ParadoxParse for IdRef<T> {
     fn read_from(&mut self, parser: &mut Parser, val: Token) -> Result<()> {
         let key = val.try_to_string()?;
+        if key == T::DEFAULT_STRING {
+            self.index = 0;
+            return Ok(());
+        }
+
         let id_box = parser.get_game_data().get_id_box_mut::<T>();
         self.index = id_box.get_index(key)
             .ok_or_else(|| parser.validation_error(
