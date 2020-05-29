@@ -35,6 +35,7 @@
 #[allow(non_camel_case_types)]
 #[derive(Debug)]
 pub enum CountryScope {
+    any_known_country,
     any_owned_province,
     capital_scope,
     country(paradox::IdRef<crate::Country>),
@@ -45,16 +46,65 @@ impl CountryScope {
                      key: &str) -> Result<Option<Self>, paradox::ParseError> {
         let data = parser.get_game_data();
         match key {
+            "any_ally" => Ok(Some(Self::any_known_country)),
+            "any_country" => Ok(Some(Self::any_known_country)),
+            "any_known_country" => Ok(Some(Self::any_known_country)),
+            "any_neighbor_country" => Ok(Some(Self::any_known_country)),
             "any_owned_province" => Ok(Some(Self::any_owned_province)),
             "capital_scope" => Ok(Some(Self::capital_scope)),
+            "FROM" => Ok(Some(Self::capital_scope)),
+            "ROOT" => Ok(Some(Self::capital_scope)),
+            "PREV" => Ok(Some(Self::capital_scope)),
+            "THIS" => Ok(Some(Self::capital_scope)),
             _ => {
                 if let Some(val) = paradox::IdRef::<crate::Country>::from_str(key, data) {
                     return Ok(Some(Self::country(val)));
+                }
+                if let Some(val) = paradox::IdRef::<crate::Region>::from_str(key, data) {
+                    return Ok(Some(Self::any_owned_province));
+                }
+                if let Some(val) = paradox::IdRef::<crate::Area>::from_str(key, data) {
+                    return Ok(Some(Self::any_owned_province));
+                }
+                use std::str::FromStr;
+                if let Ok(num) = u32::from_str(key) {
+                    return Ok(Some(Self::any_owned_province));
                 }
                 Ok(None)
             }
         }
     }
+
+    fn is_country(&self) -> bool {
+        match self {
+            Self::any_known_country => true,
+            Self::any_owned_province => false,
+            Self::capital_scope => false,
+            Self::country(_) => true
+        }
+    }
+
+    /*
+    fn parse_country_list(parser: &mut paradox::Parser, value: paradox::Token
+                          ) -> Result<Vec<Box<dyn paradox::Condition>>, paradox::ParseError> {
+        let mut vec = Vec::new();
+        value.expect_complex()?;
+        while let Some((key, value)) = parser.get_next_value()? {
+            match key {
+                None => {
+                    parser.validation_error("CountryCondition", "", "bad_key", false,
+                                            Some(value))?;
+                },
+                Some(key) => {
+                    let key = key.into_owned();
+                    let condition = Box::new(
+                        parser.try_parse::<crate::CountryCondition>(&key, value)?);
+                    vec.push(condition);
+                },
+            }
+        }
+        Ok(vec)
+    }*/
 }
 
 #[allow(non_camel_case_types)]

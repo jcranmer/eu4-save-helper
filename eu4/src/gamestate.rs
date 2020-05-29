@@ -25,6 +25,7 @@ pub struct Gamestate {
     pub institutions: Vec<i32>,
     pub institutions_penalties: Vec<FixedPoint>,
     pub trade: Trade,
+    #[repeated] pub unit_templates: Vec<()>,
     pub production_leader_tag: Vec<CountryRef>,
     pub tradegoods_total_produced: Vec<FixedPoint>,
     pub change_price: HashMap<String, ()>,
@@ -55,6 +56,7 @@ pub struct Gamestate {
     pub expanded_dip_action_groups: Vec<i32>,
     pub achievement_ok: bool,
     #[optional] pub achievement: (),
+    #[optional] pub completed_achievements: (),
     pub unit_manager: (),
     pub trade_company_manager: (),
     pub tech_level_dates: (), // it's a [(String, Date); 3]

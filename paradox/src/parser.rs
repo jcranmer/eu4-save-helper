@@ -68,9 +68,10 @@ pub trait ParadoxParse {
                  value: UnparsedValue) -> Result<()>;
 }
 
-pub trait FromParadoxKeyPair : Sized {
+pub trait FromParadoxKeyPair {
     fn try_from(parser: &mut Parser, key: &str,
-                value: UnparsedValue) -> Result<Self>;
+                value: UnparsedValue) -> Result<Self>
+        where Self: Sized;
 }
 
 #[derive(Debug, Clone, PartialEq)]
