@@ -1,12 +1,24 @@
-/*scope_list!{
+paradox::scope_list!{
+    // XXX: Syntax?
+    // <province id> -> Province
+    // <tag> -> Country
+    // <area> -> Province
+    // <region> -> Province
+    // <superregion> -> Province
+    // <continent> -> Province
+    // <trade_company> -> Province
+    // <colonial_region> -> Province
+    // <event_target> -> ???
     scope(*, Country, emperor);
     scope(*, Country, revolution_target);
     scope(*, Country, crusade_target);
     scope(Country, Country, all_countries_including_self);
     scope(Country, Country, colonial_parent);
+    scope(Country, Country, overlord);
     scope(Country, Province, home_trade_node);
     scope(Country, Province, capital_scope);
     scope(Province, Country, controller);
+    scope(Province, Country, owner);
     scope(Province, Country, most_province_trade_power);
     scope(Province, Country, strongest_trade_power);
     scope(Province, Province, area);
@@ -30,58 +42,37 @@
     scope_many(Country, Province, states);
     scope_many(Country, Country, subject_country);
     scope_many(Country, Province, trade_node);
-}*/
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug)]
 pub enum CountryScope {
-    any_known_country,
+    scope(Scope),
     any_owned_province,
-    capital_scope,
     country(paradox::IdRef<crate::Country>),
 }
 
 impl CountryScope {
     pub fn get_scope(parser: &mut paradox::Parser,
                      key: &str) -> Result<Option<Self>, paradox::ParseError> {
+        if let Some(scope) = Scope::get_scope(parser, key) {
+            return Ok(Some(CountryScope::scope(scope)));
+        }
         let data = parser.get_game_data();
-        match key {
-            "any_ally" => Ok(Some(Self::any_known_country)),
-            "any_country" => Ok(Some(Self::any_known_country)),
-            "any_known_country" => Ok(Some(Self::any_known_country)),
-            "any_neighbor_country" => Ok(Some(Self::any_known_country)),
-            "any_owned_province" => Ok(Some(Self::any_owned_province)),
-            "capital_scope" => Ok(Some(Self::capital_scope)),
-            "FROM" => Ok(Some(Self::capital_scope)),
-            "ROOT" => Ok(Some(Self::capital_scope)),
-            "PREV" => Ok(Some(Self::capital_scope)),
-            "THIS" => Ok(Some(Self::capital_scope)),
-            _ => {
-                if let Some(val) = paradox::IdRef::<crate::Country>::from_str(key, data) {
-                    return Ok(Some(Self::country(val)));
-                }
-                if let Some(val) = paradox::IdRef::<crate::Region>::from_str(key, data) {
-                    return Ok(Some(Self::any_owned_province));
-                }
-                if let Some(val) = paradox::IdRef::<crate::Area>::from_str(key, data) {
-                    return Ok(Some(Self::any_owned_province));
-                }
-                use std::str::FromStr;
-                if let Ok(num) = u32::from_str(key) {
-                    return Ok(Some(Self::any_owned_province));
-                }
-                Ok(None)
-            }
+        if let Some(val) = paradox::IdRef::<crate::Country>::from_str(key, data) {
+            return Ok(Some(Self::country(val)));
         }
-    }
-
-    fn is_country(&self) -> bool {
-        match self {
-            Self::any_known_country => true,
-            Self::any_owned_province => false,
-            Self::capital_scope => false,
-            Self::country(_) => true
+        if let Some(_) = paradox::IdRef::<crate::Region>::from_str(key, data) {
+            return Ok(Some(Self::any_owned_province));
         }
+        if let Some(_) = paradox::IdRef::<crate::Area>::from_str(key, data) {
+            return Ok(Some(Self::any_owned_province));
+        }
+        use std::str::FromStr;
+        if let Ok(_) = u32::from_str(key) {
+            return Ok(Some(Self::any_owned_province));
+        }
+        Ok(None)
     }
 
     /*
@@ -107,22 +98,4 @@ impl CountryScope {
     }*/
 }
 
-#[allow(non_camel_case_types)]
-#[derive(Debug)]
-pub enum ProvinceScope {
-    owner,
-}
-
-impl ProvinceScope {
-    pub fn get_scope(parser: &mut paradox::Parser,
-                     key: &str) -> Result<Option<Self>, paradox::ParseError> {
-        match key {
-            "owner" => { 
-                Ok(Some(Self::owner))
-            },
-            _ => {
-                Ok(None)
-            }
-        }
-    }
-}
+pub type ProvinceScope = CountryScope;

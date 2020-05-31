@@ -29,8 +29,8 @@ pub struct GameData {
     #[parse = "common/tradenodes"]
     trade: crate::TradeNodeList,
 
-    #[parse = "events"]
-    events: crate::EventList,
+    //#[parse = "events"]
+    //events: crate::EventList,
 }
 
 macro_rules! impl_box {

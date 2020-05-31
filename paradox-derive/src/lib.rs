@@ -1,6 +1,7 @@
 extern crate proc_macro;
 
 mod game;
+mod scopes;
 mod tables;
 
 use proc_macro2::{Ident, Span, TokenStream};
@@ -286,4 +287,9 @@ pub fn condition_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 pub fn effect_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let table = parse_macro_input!(input as tables::ScopedEffectList);
     table.generate_code().into()
+}
+
+#[proc_macro]
+pub fn scope_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    scopes::scope_list(input)
 }
