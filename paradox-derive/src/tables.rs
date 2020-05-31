@@ -10,6 +10,7 @@ use syn::spanned::Spanned;
 mod kw {
     syn::custom_keyword!(modifier);
     syn::custom_keyword!(condition);
+    syn::custom_keyword!(effect);
 }
 
 pub(crate) trait TableEntry : Parse {
@@ -177,13 +178,33 @@ fn get_name(arg: &PatType) -> Option<&Ident> {
 }
 
 pub(crate) struct Effect {
-    function: ItemFn,
+    name: Ident,
     scope: Ident,
     arguments: Vec<PatType>,
 }
 
 impl Parse for Effect {
     fn parse(input: ParseStream) -> Result<Self> {
+        if input.peek(kw::effect) {
+            // effect(<Scope>, name, <arg>);
+            let content;
+            input.parse::<kw::effect>()?;
+            let _paren_token = parenthesized!(content in input);
+            let scope : Ident = content.parse()?;
+            content.parse::<Token![,]>()?;
+            let name : Ident = content.parse()?;
+            content.parse::<Token![,]>()?;
+            let pat_ty = PatType {
+                attrs: Vec::new(),
+                pat: Box::new(syn::parse_quote! { foo }),
+                colon_token: syn::parse_quote! { : },
+                ty: Box::new(content.parse()?)
+            };
+            input.parse::<Token![;]>()?;
+            return Ok(Effect {
+                name, scope, arguments: vec![pat_ty]
+            });
+        }
         let function : ItemFn = input.parse()?;
         let mut arguments = Vec::new();
         function.sig.inputs.iter().try_for_each(|arg| {
@@ -208,7 +229,7 @@ impl Parse for Effect {
         arguments.pop();
         Ok(Effect {
             arguments: arguments.iter().map(|&val| val.clone()).collect(),
-            function,
+            name: function.sig.ident,
             scope,
         })
     }
@@ -216,7 +237,7 @@ impl Parse for Effect {
 
 impl Effect {
     fn name(&self) -> &Ident {
-        &self.function.sig.ident
+        &self.name
     }
 
     fn simple_ty(&self) -> Option<&Type> {
@@ -275,7 +296,7 @@ impl TableEntry for Effect {
         };
         let stringy_name = stringify(&name);
         quote_spanned! { name.span() =>
-            key if key == #stringy_name => {
+            #stringy_name => {
                 #body
             }
         }

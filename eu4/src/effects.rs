@@ -21,88 +21,86 @@ paradox::effect_list! {
 */
 
     //fn <unit name>(<code><scope></code>, scope: Country) {}
-    fn add_absolutism(val: i32, scope: Country) {}
-    fn add_accepted_culture(culture: String, scope: Country) {}
+    effect(Country, add_absolutism, i32);
+    effect(Country, add_accepted_culture, String);
     //fn add_active_policy(policy: (), scope: Country) {}
-    fn add_adm_power(val: i32, scope: Country) {}
-    fn add_adm_tech(val: i32, scope: Country) {}
+    effect(Country, add_adm_power, i32);
+    effect(Country, add_adm_tech, i32);
     //fn add_army_professionalism(float: (), scope: Country) {}
-    fn add_army_tradition(val: i32, scope: Country) {}
-    fn add_authority(val: i32, scope: Country) {}
+    effect(Country, add_army_tradition, i32);
+    effect(Country, add_authority, i32);
     //fn add_casus_belli(target: String, type: String, months: i32, scope: Country) {}
     //fn add_church_aspect(aspect: (), scope: Country) {}
-    fn add_church_power(val: i32, scope: Country) {}
+    effect(Country, add_church_power, i32);
     //fn add_corruption(float: (), scope: Country) {}*/
     fn add_country_modifier(name: String, duration: i32, /* hidden: bool, desc: String */ scope: Country) {}
-    fn add_devotion(val: i32, scope: Country) {}
-    fn add_dip_power(val: i32, scope: Country) {}
-    fn add_dip_tech(val: i32, scope: Country) {}
-    /*fn add_disaster_modifier(name: modifier, The event modifier to add., disaster: disaster, The disaster to apply the modifier to., duration: days, The duration for the modifier to be active for.) {}
-    fn add_disaster_progress(disaster: disaster, The disaster to alter., value: int, The amount of progress to add or subtract.) {}
-    fn add_doom(val: i32, scope: Country) {}
-    fn add_estate_influence_modifier(estate: estate, The estate to apply the modifier to., desc: string, The text to display in the Influence tooltip for this modifier., influence: int, The amount of influence to add or subtract., duration: days, The duration for which this modifier is active.<br>) {}
+    effect(Country, add_devotion, i32);
+    effect(Country, add_dip_power, i32);
+    effect(Country, add_dip_tech, i32);
+    //fn add_disaster_modifier(name: modifier, The event modifier to add., disaster: disaster, The disaster to apply the modifier to., duration: days, The duration for the modifier to be active for.) {}
+    //fn add_disaster_progress(disaster: disaster, The disaster to alter., value: int, The amount of progress to add or subtract.) {}
+    effect(Country, add_doom, i32);
+    /*fn add_estate_influence_modifier(estate: estate, The estate to apply the modifier to., desc: string, The text to display in the Influence tooltip for this modifier., influence: int, The amount of influence to add or subtract., duration: days, The duration for which this modifier is active.<br>) {}
     fn add_estate_loyalty(estate: estate, The estate to apply the loyalty to., loyalty: int, The amount of loyalty to add or subtract.<br>) {}
     fn add_estate_loyalty_modifier(estate: estate, The estate to apply the modifier to., desc: string, The text to display in the Influence tooltip for this modifier., loyalty: int, The amount of loyalty to add or subtract., duration: days, The duration for which this modifier is active.<br>) {}
     fn add_faction(faction: (), scope: Country) {}
     fn add_faction_influence(faction: faction, The faction to add influence to., influence: int, The amount of influence to add.) {}
-    fn add_fervor(val: i32, scope: Country) {}
+    effect(Country, add_fervor, i32);
     fn add_government_power(government_mechanic: type, Which government mechanic to add power to., which: type, Which pool type to add the power to. ''ADM, DIP or MIL'', amount: type, The amount of power to add.) {}
-    fn add_government_reform(reform: (), scope: Country) {}
-    fn add_harmonization_progress(val: i32, scope: Country) {}
-    fn add_harmonized_religion(religion: (), scope: Country) {}
-    fn add_harmony(val: i32, scope: Country) {}
-    fn add_heir_claim(val: i32, scope: Country) {}
-    fn add_heir_personality(personality: (), scope: Country) {}
-    fn add_heir_support(val: i32, scope: Country) {}
-    fn add_historical_friend(scope: (), scope: Country) {}
+    fn add_government_reform(reform: (), scope: Country) {}*/
+    effect(Country, add_harmonization_progress, i32);
+    effect(Country, add_harmonized_religion, String);
+    effect(Country, add_harmony, i32);
+    effect(Country, add_heir_claim, i32);
+    effect(Country, add_heir_personality, String);
+    effect(Country, add_heir_support, i32);
+    /*fn add_historical_friend(scope: (), scope: Country) {}
     fn add_historical_rival(scope: (), scope: Country) {}
     fn add_horde_unity(<code><int></code>, The amount of horde unity to add or subtract.<br>) {}
     fn add_idea(idea: (), scope: Country) {}
     fn add_idea_group(ideagroup: (), scope: Country) {}
-    fn add_imperial_influence(val: i32, scope: Country) {}
+    effect(Country, add_imperial_influence, i32);
     fn add_incident_variable_value(incident: incident, The incident to change., value: int, The amount to add to the incident variable.) {}
     fn add_inflation(float: (), scope: Country) {}
-    fn add_isolationism(val: i32, scope: Country) {}
-    fn add_karma(val: i32, scope: Country) {}
+    effect(Country, add_isolationism, i32);
+    effect(Country, add_karma, i32);
     fn add_legitimacy(<code><int></code>, The amount of legitimacy to add or subtract., <code><scope></code>, The amount of legitimacy to add or subtract, taking the value from the scope's current value.<br>) {}
-    fn add_liberty_desire(val: i32, scope: Country) {}
+    effect(Country, add_liberty_desire, i32);
     fn add_loan(interest_modifier: i32, fixed_interest: bool, duration: i32, scope: Country) {}
-    fn add_mandate(val: i32, scope: Country) {}
+    effect(Country, add_mandate, i32);
     fn add_manpower(float: (), scope: Country) {}
-    fn add_mercantilism(val: i32, scope: Country) {}
+    effect(Country, add_mercantilism, i32);
     fn add_meritocracy(<code><int></code>, The amount of meritocracy to add or subtract.<br>) {}
-    fn add_mil_power(val: i32, scope: Country) {}
-    fn add_mil_tech(val: i32, scope: Country) {}
+    effect(Country, add_mil_power, i32);
+    effect(Country, add_mil_tech, i32);
     fn add_militarised_society(<code><int></code>, The amount of militarisation to add or subtract.<br>) {}
-    fn add_navy_tradition(val: i32, scope: Country) {}
-    fn add_next_institution_embracement(val: i32, scope: Country) {}
+    effect(Country, add_navy_tradition, i32);
+    effect(Country, add_next_institution_embracement, i32);
     fn add_opinion(who: scope, The country the opinion modifier is for., modifier: modifier, The opinion modifier to use., years: int, Optional. Whether the modifier expires after a set amount of years.) {}
-    fn add_papal_influence(val: i32, scope: Country) {}
+    effect(Country, add_papal_influence, i32);
     fn add_patriarch_authority(float: (), scope: Country) {}
     fn add_piety(float: (), scope: Country) {}
     */
-    fn add_prestige(value: FixedPoint, scope: Country) {
-        scope.prestige += value;
-    }
+    effect(Country, add_prestige, FixedPoint);
     /*
     fn add_queen_personality(personality: (), scope: Country) {}
     fn add_reform_desire(float: (), scope: Country) {}
     fn add_republican_tradition(<code><int></code>, The amount of republican tradition to add or subtract.<br>) {}
     fn add_ruler_modifier(name: name, The event modifier to add., duration: days, Optional. The number of days to add the ruler modifier for., <code>hidden = yes</code>, Optional. Whether the ruler modifier is hidden in the government view., <code>desc = <string</code>, Optional. The string used to override the automatic duration string.) {}
     fn add_ruler_personality(personality: (), scope: Country) {}
-    fn add_sailors(val: i32, scope: Country) {}
-    fn add_scaled_imperial_influence(val: i32, scope: Country) {}
+    effect(Country, add_sailors, i32);
+    effect(Country, add_scaled_imperial_influence, i32);
     fn add_scaled_republican_tradition(<code><int></code>, The amount of republican tradition to add or subtract.<br>) {}
-    fn add_splendor(val: i32, scope: Country) {}
+    effect(Country, add_splendor, i32);
     fn add_spy_network_from(who: scope, The country to add spy network for., value: int, The amount of spy network to add or subtract.) {}
     fn add_spy_network_in(who: scope, The country to add spy network in., value: int, The amount of spy network to add or subtract.) {}*/
-    fn add_stability(val: i32, scope: Country) {}
+    effect(Country, add_stability, i32);
     /*fn add_tariff_value(float: (), scope: Country) {}
-    fn add_treasury(val: i32, scope: Country) {}
+    effect(Country, add_treasury, i32);
     fn add_tribal_allegiance(<code><int></code>, The amount of tribal allegiance to add or subtract.<br>) {}
     fn add_truce_with(scope: (), scope: Country) {}
     fn add_trust(who: scope, The country trust will be added with., value: int, The amount of trust to add or subtract., <code>mutual = yes</code>, Optional. Whether to apply the trust change to both countries.) {}
-    fn add_war_exhaustion(val: i32, scope: Country) {}
+    effect(Country, add_war_exhaustion, i32);
     fn add_yearly_manpower(float: (), scope: Country) {}
     fn add_yearly_sailors(float: (), scope: Country) {}
     fn add_years_of_income(float: (), scope: Country) {}
@@ -111,22 +109,22 @@ paradox::effect_list! {
     fn break_marriage(scope: (), scope: Country) {}
     fn break_union(scope: (), scope: Country) {}
     fn cavalry(scope: (), scope: Country) {}
-    fn change_adm(val: i32, scope: Country) {}
+    effect(Country, change_adm, i32);
     fn change_consort_regent_to_ruler(<code>yes</code>, Boolean.) {}
-    fn change_dip(val: i32, scope: Country) {}
+    effect(Country, change_dip, i32);
     fn change_government(government: (), scope: Country) {}
-    fn change_government_reform_progress(val: i32, scope: Country) {}
+    effect(Country, change_government_reform_progress, i32);
     fn change_graphical_culture(gfxculture: (), scope: Country) {}
-    fn change_heir_adm(val: i32, scope: Country) {}
-    fn change_heir_dip(val: i32, scope: Country) {}
-    fn change_heir_mil(val: i32, scope: Country) {}
-    fn change_innovativeness(val: i32, scope: Country) {}
-    fn change_mil(val: i32, scope: Country) {}
+    effect(Country, change_heir_adm, i32);
+    effect(Country, change_heir_dip, i32);
+    effect(Country, change_heir_mil, i32);
+    effect(Country, change_innovativeness, i32);
+    effect(Country, change_mil, i32);
     fn change_personal_deity(deity: (), scope: Country) {}
     fn change_price(trade_goods: tradegood, The trade good to change., key: string, The localisation key to display in the Trade Good's price tooltip., value: float, The percentage to change the value by., duration: days, The duration for the value to stay changed for.) {}
     fn change_primary_culture(<code><culture></code>, The culture to change to, from {{path|common/cultures/}}, <code><scope></code>, The culture to change to, derived from the scope.) {}
     */
-    fn change_religion(religion: String, scope: Country) {}
+    effect(Country, change_religion, String);
     /*
     fn change_statists_vs_orangists(<code><int></code>, The amount of swing towards statists or organgists.<br>) {}
     fn change_tag(scope: (), scope: Country) {}
@@ -147,8 +145,8 @@ paradox::effect_list! {
     fn create_admiral(tradition: int,add_fire: int,add_shock: int,add_manuever: int,add_siege: int,culture: identifier, scope: Country) {}
     fn create_advisor(advisor: (), scope: Country) {}
     fn create_alliance(scope: (), scope: Country) {}
-    fn create_conquistador(val: i32, scope: Country) {}
-    fn create_explorer(val: i32, scope: Country) {}
+    effect(Country, create_conquistador, i32);
+    effect(Country, create_explorer, i32);
     fn create_general(tradition: int,add_fire: int,add_shock: int,add_manuever: int,add_siege: int,culture: identifier, scope: Country) {}
     fn create_guarantee(scope: (), scope: Country) {}
     fn create_independent_estate(estate: (), scope: Country) {}
@@ -199,7 +197,7 @@ paradox::effect_list! {
     fn kill_ruler(<code>yes</code>, Boolean.) {}
     fn leave_league(scope: (), scope: Country) {}
     fn light_ship(scope: (), scope: Country) {}
-    fn loan_size(val: i32, scope: Country) {}
+    effect(Country, loan_size, i32);
     fn mercenary_cavalry(scope: (), scope: Country) {}
     fn mercenary_infantry(scope: (), scope: Country) {}
     fn reinstate_parliament(<code>yes</code>, Boolean.) {}
@@ -211,7 +209,7 @@ paradox::effect_list! {
     fn remove_casus_belli(target: scope, The country the casus belli is against., type: cb, The casus belli to remove.<br>) {}
     fn remove_church_aspect(aspect: (), scope: Country) {}
     fn remove_consort(<code>yes</code>, Boolean.) {}*/
-    fn remove_country_modifier(modifier: String, scope: Country) {}
+    effect(Country, remove_country_modifier, String);
     /*fn remove_faction(faction: (), scope: Country) {}
     fn remove_fow(months: (), scope: Country) {}
     fn remove_heir(<code>yes</code>, Boolean.) {}
@@ -222,7 +220,7 @@ paradox::effect_list! {
     fn remove_idea_group(ideagroup: (), scope: Country) {}
     fn remove_opinion(who: scope, The country the opinion modifier is held against., modifier: modifier, The opinion modifier to use.<br>) {}
     fn remove_queen_personality(personality: (), scope: Country) {}
-    fn remove_religious_reforms(val: i32, scope: Country) {}
+    effect(Country, remove_religious_reforms, i32);
     fn remove_ruler_personality(personality: (), scope: Country) {}
     fn reverse_add_casus_belli(target: scope, The country to that gains the casus belli., type: cb, The casus belli to add., months: months, The number of months the casus belli lasts for.) {}
     fn reverse_add_opinion(who: scope, The country the opinion modifier is added to., modifier: modifier, The opinion modifier to use., years: int, Optional. Whether the modifier expires after a set amount of years.) {}
@@ -235,11 +233,11 @@ paradox::effect_list! {
     fn set_consort_culture(<code><culture></code>, The culture to change to.<br>) {}
     fn set_consort_flag(flag: (), scope: Country) {}
     fn set_consort_religion(<code><religion></code>, The religion to change to.<br>) {}*/
-    fn set_country_flag(flag: String, scope: Country) {}
+    effect(Country, set_country_flag, String);
     /*fn set_dynasty(<code><string> / <scope> / original_dynasty</code>, The dynasty to set.<br>) {}
     fn set_emperor_of_china(scope: (), scope: Country) {}
     fn set_government_and_rank(government: government, The government to change to., rank: int, The rank to change to.) {}
-    fn set_government_rank(val: i32, scope: Country) {}
+    effect(Country, set_government_rank, i32);
     fn set_heir(string: (), scope: Country) {}
     fn set_heir_culture(<code><culture></code>, The culture to change to.<br>) {}
     fn set_heir_flag(flag: (), scope: Country) {}
@@ -250,10 +248,10 @@ paradox::effect_list! {
     fn set_hre_religion_treaty(<code>yes</code>, Boolean.) {}
     fn set_in_empire(<code>yes</code>, Boolean.) {}
     fn set_incident_variable_value(incident: incident, The incident to change., value: int, The amount to set the incident variable to.) {}
-    fn set_isolationism(val: i32, scope: Country) {}
-    fn set_karma(val: i32, scope: Country) {}
+    effect(Country, set_isolationism, i32);
+    effect(Country, set_karma, i32);
     fn set_legacy_government(government: government, The pre-Dharma government type to change to.) {}
-    fn set_mandate(val: i32, scope: Country) {}
+    effect(Country, set_mandate, i32);
     fn set_meritocracy(<code><int></code>, The amount of meritocracy to set.<br>) {}
     fn set_papacy_active(<code>yes</code><code>no</code>, Boolean.) {}
     fn set_primitive(<code><yes><no></code>, Boolean.) {}
