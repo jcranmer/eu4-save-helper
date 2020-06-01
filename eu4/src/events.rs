@@ -1,16 +1,18 @@
-use crate::CountryCondition;
-use paradox::ParadoxParse;
+use crate::{CountryCondition, Factor};
+use paradox::{ParadoxParse};
 
 #[derive(ParadoxParse, Default)]
 pub struct CountryEvent {
     pub id: String,
     pub title: String,
-    //pub desc: String,
-    //pub picture: String,
+    #[repeated] pub desc: Vec<()>, // XXX: These are rather more complicated...
+    #[repeated] pub picture: Vec<()>, // XXX: These are rather more complicated...
     #[optional] pub hidden: bool,
     #[optional] pub fire_only_once: bool,
     #[optional] pub is_triggered_only: bool,
     #[optional] pub major: bool,
+
+    #[optional] pub mean_time_to_happen: MeanTimeToHappen,
 
     pub trigger: Vec<CountryCondition>
 }
@@ -22,4 +24,10 @@ pub struct EventList {
     #[optional] pub normal_or_historical_nations: bool,
     #[repeated]
     pub country_event: Vec<CountryEvent>
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct MeanTimeToHappen {
+    pub months: i32,
+    #[repeated] pub modifier: Vec<Factor>,
 }

@@ -1,4 +1,10 @@
-use crate::{ProvinceRef, RgbColor};
+use crate::{
+    CountryModifier,
+    ProvinceCondition,
+    ProvinceModifier,
+    ProvinceRef,
+    RgbColor
+};
 use paradox::{IdKey, ParadoxParse};
 
 #[derive(ParadoxParse, Default, Debug)]
@@ -24,4 +30,16 @@ pub struct TradeEdge {
     control: Vec<f64>
 }
 
+#[derive(ParadoxParse, Default, Debug)]
+pub struct TradeGood {
+    color: [paradox::FixedPoint; 3],
+    #[optional] modifier: Vec<CountryModifier>,
+    #[optional] province: Vec<ProvinceModifier>,
+    #[optional] is_latent: bool,
+    #[optional] is_valuable: bool,
+    #[optional] rnw_latent_chance: u32,
+    #[optional] trigger: Vec<ProvinceCondition>,
+}
+
+pub type TradeGoodList = std::collections::HashMap<IdKey<TradeGood>, TradeGood>;
 pub type TradeNodeList = std::collections::HashMap<IdKey<TradeNode>, TradeNode>;

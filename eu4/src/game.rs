@@ -20,11 +20,17 @@ pub struct GameData {
     #[parse = "map/continent.txt"]
     continents: HashMap<IdKey<crate::Continent>, Vec<u32>>,
 
+    #[parse = "map/climate.txt"]
+    climates: crate::ClimateList,
+
     #[parse = "common/cultures"]
     cultures: crate::CultureGroupList,
 
     #[parse = "common/religions"]
     religions: crate::ReligionList,
+
+    #[parse = "common/tradegoods"]
+    tradegoods: crate::TradeGoodList,
 
     #[parse = "common/tradenodes"]
     trade: crate::TradeNodeList,
@@ -52,3 +58,5 @@ impl_box!(crate::Continent, 6);
 impl_box!(crate::CultureGroup, 7);
 impl_box!(crate::Culture, 8);
 impl_box!(crate::TradeNode, 9);
+impl_box!(crate::Climate, 10);
+impl_box!(crate::TradeGood, 11);

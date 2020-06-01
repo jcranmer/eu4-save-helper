@@ -1,6 +1,7 @@
 use paradox::{FixedPoint, IdRef};
-use crate::{Continent, Country, Culture, CultureGroup, Religion};
+use crate::{Continent, Country, Culture, CultureGroup, Religion, TradeGood};
 paradox::condition_list!{
+    condition(Country, <trade_good: TradeGood>, i32);
     condition(Country, absolutism, FixedPoint);
     condition(Country, adm, i32);
     condition(Country, adm_power, i32);
@@ -13,12 +14,14 @@ paradox::condition_list!{
     condition(Country, dip, i32);
     condition(Country, dip_power, i32);
     condition(Country, dip_tech, i32);
+    condition(Country, dominant_religion, IdRef<Religion>);
     condition(Country, employed_advisor, ()); // XXX -- complex clauses...
     condition(Country, exists, IdRef<Country>);
     condition(Country, government, String);
     condition(Country, had_country_flag, ()); // XXX -- complex clauses...
     condition(Country, had_ruler_flag, ()); // XXX -- complex clauses...
     condition(Country, had_recent_war, i32);
+    condition(Country, harmonization_progress, i32);
     condition(Country, has_advisor, bool);
     condition(Country, has_consort_regency, bool);
     condition(Country, has_country_flag, String);
@@ -26,8 +29,10 @@ paradox::condition_list!{
     condition(Country, has_dlc, String);
     condition(Country, has_estate_influence_modifier, ()); // XXX -- complex clauses...
     condition(Country, has_government_attribute, String);
+    condition(Country, has_idea, String);
     condition(Country, has_idea_group, String);
     condition(Country, has_institution, String);
+    condition(Country, has_opinion, ()); // XXX -- complex clauses...
     condition(Country, has_parliament, bool);
     condition(Country, has_regency, bool);
     condition(Country, has_ruler_flag, String);
@@ -77,6 +82,7 @@ paradox::condition_list!{
     condition(Country, is_tribal, bool);
     condition(Country, is_vassal, bool);
     condition(Country, karma, FixedPoint);
+    condition(Country, liberty_desire, FixedPoint);
     condition(Country, manpower_percentage, FixedPoint);
     condition(Country, mercantilism, FixedPoint);
     condition(Country, mil, i32);
@@ -134,6 +140,7 @@ paradox::condition_list!{
     condition(Country, num_of_times_improved, i32);
     condition(Country, num_of_total_ports, i32);
     condition(Country, owns, i32);
+    condition(Country, owns_core_province, i32);
     condition(Country, primary_culture, IdRef<Culture>);
     condition(Country, reform_desire, FixedPoint);
     condition(Country, religion, IdRef<Religion>);
@@ -148,7 +155,12 @@ paradox::condition_list!{
     condition(Country, war_score, FixedPoint);
     condition(Country, war_with, String);
 
+    // XXX: these are the <*> conditions
+    condition(Country, economic_ideas, i32);
+
     condition(Province, continent, IdRef<Continent>);
+    condition(Province, development, u32);
+    condition(Province, provincial_institution_progress, ()); // XXX -- complex
 
     // XXX: these are really *
     condition(Country, current_age, String);
@@ -162,3 +174,9 @@ paradox::condition_list!{
 
 impl paradox::Condition for CountryCondition { }
 impl paradox::Condition for ProvinceCondition { }
+
+#[derive(paradox::ParadoxParse, Default)]
+pub struct Factor {
+    pub factor: FixedPoint,
+    #[modifiers] pub condition: Vec<CountryCondition>,
+}

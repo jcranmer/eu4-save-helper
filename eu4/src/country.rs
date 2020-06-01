@@ -83,3 +83,13 @@ pub struct Region {
 pub struct Superregion {}
 
 pub struct Continent {}
+
+pub struct Climate {}
+
+#[derive(ParadoxParse, Default)]
+pub struct ClimateList {
+    pub equator_y_on_province_image: u32,
+
+    #[collect]
+    pub climates: HashMap<IdKey<Climate>, Vec<u32>>,
+}

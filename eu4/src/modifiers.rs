@@ -217,7 +217,7 @@ paradox::modifier_list! {
     modifier(Country, reform_progress_growth, FixedPoint);
 
     modifier(Country, culture_conversion_cost, FixedPoint);
-    //modifier(Country, num_accepted_cultures, type(1));
+    modifier(Country, num_accepted_cultures, i32);
     modifier(Country, same_culture_advisor_cost, FixedPoint);
     modifier(Country, promote_culture_cost, FixedPoint);
 
@@ -345,7 +345,7 @@ paradox::modifier_list! {
 
     modifier(Province, local_culture_conversion_cost, FixedPoint);
 
-    //modifier(Province, local_unrest, type(-1));
+    modifier(Province, local_unrest, FixedPoint);
     modifier(Province, local_autonomy, FixedPoint);
     //modifier(Province, local_years_of_nationalism, type(-5));
     //modifier(Province, min_local_autonomy, type(50));
@@ -380,4 +380,6 @@ paradox::modifier_list! {
 
     modifier(Country, has_banners, i32);
     modifier(Province, local_has_banners, i32);
+    modifier(Province, land_forcelimit, FixedPoint);
+    modifier(Province, naval_forcelimit, FixedPoint);
 }

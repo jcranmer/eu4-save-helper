@@ -1,7 +1,6 @@
 paradox::scope_list!{
     // XXX: Syntax?
     // <province id> -> Province
-    // <tag> -> Country
     // <area> -> Province
     // <region> -> Province
     // <superregion> -> Province
@@ -12,6 +11,11 @@ paradox::scope_list!{
     scope(*, Country, emperor);
     scope(*, Country, revolution_target);
     scope(*, Country, crusade_target);
+    scope(*, Country, <tag: Country>);
+    scope(*, Province, <an_area: Area>);
+    scope(*, Province, <a_region: Region>);
+    scope(*, Province, <a_superregion: Superregion>);
+    scope(*, Province, <a_continent: Continent>);
     scope(Country, Country, all_countries_including_self);
     scope(Country, Country, colonial_parent);
     scope(Country, Country, overlord);
@@ -49,7 +53,6 @@ paradox::scope_list!{
 pub enum CountryScope {
     scope(Scope),
     any_owned_province,
-    country(paradox::IdRef<crate::Country>),
 }
 
 impl CountryScope {
@@ -57,16 +60,6 @@ impl CountryScope {
                      key: &str) -> Result<Option<Self>, paradox::ParseError> {
         if let Some(scope) = Scope::get_scope(parser, key) {
             return Ok(Some(CountryScope::scope(scope)));
-        }
-        let data = parser.get_game_data();
-        if let Some(val) = paradox::IdRef::<crate::Country>::from_str(key, data) {
-            return Ok(Some(Self::country(val)));
-        }
-        if let Some(_) = paradox::IdRef::<crate::Region>::from_str(key, data) {
-            return Ok(Some(Self::any_owned_province));
-        }
-        if let Some(_) = paradox::IdRef::<crate::Area>::from_str(key, data) {
-            return Ok(Some(Self::any_owned_province));
         }
         use std::str::FromStr;
         if let Ok(_) = u32::from_str(key) {

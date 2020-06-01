@@ -7,8 +7,9 @@ mod tables;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
 use quote::ToTokens;
+use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, Data, DeriveInput, Field, Type};
+use syn::{parse_macro_input, Data, DeriveInput, Field, Token, Type};
 
 #[derive(Debug)]
 struct Error(TokenStream);
@@ -293,3 +294,33 @@ pub fn effect_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 pub fn scope_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     scopes::scope_list(input)
 }
+
+enum Name {
+    Fixed(Ident),
+    Dynamic(Ident, Ident)
+}
+
+impl Parse for Name {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if input.peek(Token![<]) {
+            input.parse::<Token![<]>()?;
+            let name : Ident = input.parse()?;
+            input.parse::<Token![:]>()?;
+            let ty : Ident = input.parse()?;
+            input.parse::<Token![>]>()?;
+            Ok(Self::Dynamic(name, ty))
+        } else {
+            Ok(Self::Fixed(input.parse()?))
+        }
+    }
+}
+
+impl Name {
+    fn name(&self) -> &Ident {
+        match self {
+            Self::Fixed(n) => &n,
+            Self::Dynamic(n, _) => &n
+        }
+    }
+}
+

@@ -4,6 +4,8 @@ use syn::{parenthesized, parse_macro_input, token, Ident, Result, Token};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 
+use crate::Name;
+
 mod kw {
     syn::custom_keyword!(scope);
     syn::custom_keyword!(scope_many);
@@ -42,12 +44,12 @@ impl Parse for ScopeKw {
 
 struct Scope {
     scope_kind: ScopeKw,
-    paren_token: token::Paren,
-    outer_scope: ScopeType,
+    _paren_token: token::Paren,
+    _outer_scope: ScopeType,
     _comma1_token: Token![,],
-    inner_scope: Ident,
+    _inner_scope: Ident,
     _comma2_token: Token![,],
-    name: Ident
+    name: Name
 }
 
 impl Parse for Scope {
@@ -55,10 +57,10 @@ impl Parse for Scope {
         let content;
         Ok(Self {
             scope_kind: input.parse()?,
-            paren_token: parenthesized!(content in input),
-            outer_scope: content.parse()?,
+            _paren_token: parenthesized!(content in input),
+            _outer_scope: content.parse()?,
             _comma1_token: content.parse()?,
-            inner_scope: content.parse()?,
+            _inner_scope: content.parse()?,
             _comma2_token: content.parse()?,
             name: content.parse()?,
         })
@@ -67,27 +69,39 @@ impl Parse for Scope {
 
 impl Scope {
     fn declare_enum(&self) -> TokenStream {
-        let name = &self.name;
-        let params = match self.scope_kind {
-            ScopeKw::Scope(_) => TokenStream::new(),
-            ScopeKw::ScopeMany(_) => quote! { (bool) }
+        let name = self.name.name();
+        let params = match (&self.scope_kind, &self.name) {
+            (ScopeKw::Scope(_), Name::Fixed(_)) => TokenStream::new(),
+            (ScopeKw::Scope(_), Name::Dynamic(_, ty)) =>
+                quote! { (paradox::IdRef<crate::#ty>) },
+            (ScopeKw::ScopeMany(_), _) => quote! { (bool) }
         };
-        quote_spanned!{self.name.span() => #name #params }
+        quote_spanned!{name.span() => #name #params }
     }
 
     fn parse_stmt(&self) -> TokenStream {
-        let name = &self.name;
-        match self.scope_kind {
-            ScopeKw::Scope(_) => quote_spanned!{self.name.span() =>
-                stringify!(#name) => Some(Self::#name),
+        let name = self.name.name();
+        match (&self.scope_kind, &self.name) {
+            (ScopeKw::Scope(_), Name::Fixed(_)) => quote_spanned!{name.span() =>
+                if key == stringify!(#name) {
+                    Some(Self::#name)
+                } else
             },
-            ScopeKw::ScopeMany(_) => quote_spanned!{self.name.span() =>
-                concat!("any_", stringify!(#name)) |
-                concat!("random_", stringify!(#name)) =>
-                    Some(Self::#name(true)),
-                concat!("all_", stringify!(#name)) |
-                concat!("every_", stringify!(#name)) =>
-                    Some(Self::#name(false)),
+            (ScopeKw::Scope(_), Name::Dynamic(_, ty)) => {
+                quote_spanned!{name.span() =>
+                    if let Some(val) = paradox::IdRef::<crate::#ty>::from_str(key, data) {
+                        Some(Self::#name(val))
+                    } else
+                }
+            },
+            (ScopeKw::ScopeMany(_), _) => quote_spanned!{name.span() =>
+                if key == concat!("any_", stringify!(#name)) ||
+                        key == concat!("random_", stringify!(#name)) {
+                    Some(Self::#name(true))
+                } else if key == concat!("all_", stringify!(#name)) ||
+                        key == concat!("every_", stringify!(#name)) {
+                    Some(Self::#name(false))
+                } else
             },
         }
     }
@@ -133,8 +147,7 @@ impl ScopeList {
                     "ROOT" => Some(Self::Root),
                     "PREV" => Some(Self::Prev),
                     "THIS" => Some(Self::This),
-                    #( #match_stmt )*
-                    _ => None
+                    _ => #( #match_stmt )* { None }
                 }
             }
         }

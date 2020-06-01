@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use std::collections::HashMap;
-use super::stringify;
+use super::{Name, stringify};
 use syn::{parenthesized, token, Error, Ident, ItemFn, PatType, Result, Token, Type};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
@@ -92,7 +92,7 @@ pub(crate) struct Condition {
     paren_token: token::Paren,
     scope: Ident,
     _comma1_token: Token![,],
-    name: Ident,
+    name: Name,
     _comma2_token: Token![,],
     ty: Type
 }
@@ -125,20 +125,34 @@ impl TableEntry for Condition {
     }
 
     fn make_decl(&self) -> TokenStream {
-        let name = &self.name;
+        let name = &self.name.name();
         let ty = &self.ty;
-        quote! { #name(#ty) }
+        match &self.name {
+            Name::Fixed(_) => quote! { #name(#ty) },
+            Name::Dynamic(_, name_ty) =>
+                quote! { #name(paradox::IdRef<#name_ty>, #ty) }
+        }
     }
 
     fn make_match_clause(&self) -> TokenStream {
-        let name = &self.name;
+        let name = &self.name.name();
         let stringy_name = stringify(name);
         let ty = &self.ty;
-        quote_spanned! { self.paren_token.span =>
-            #stringy_name => {
-                let mut parsee : #ty = Default::default();
-                parsee.read_from(parser, value)?;
-                Ok(Self::#name(parsee))
+        match &self.name {
+            Name::Fixed(_) => quote_spanned! { self.paren_token.span =>
+                #stringy_name => {
+                    let mut parsee : #ty = Default::default();
+                    parsee.read_from(parser, value)?;
+                    Ok(Self::#name(parsee))
+                }
+            },
+            Name::Dynamic(_, name_ty) => quote_spanned! { self.paren_token.span =>
+                name if paradox::IdRef::<#name_ty>::from_str(name, parser.get_game_data()).is_some() => {
+                    let id = paradox::IdRef::<#name_ty>::from_str(name, parser.get_game_data()).unwrap();
+                    let mut parsee : #ty = Default::default();
+                    parsee.read_from(parser, value)?;
+                    Ok(Self::#name(id, parsee))
+                }
             }
         }
     }
