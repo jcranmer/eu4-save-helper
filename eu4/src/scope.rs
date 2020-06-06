@@ -59,16 +59,16 @@ pub enum CountryScope {
 }
 
 impl CountryScope {
-    pub fn get_scope(parser: &mut paradox::Parser,
-                     key: &str) -> Result<Option<Self>, paradox::ParseError> {
+    pub fn get_scope(parser: &mut paradox::Parser, key: &str) -> Option<Self> {
         if let Some(scope) = Scope::get_scope(parser, key) {
-            return Ok(Some(CountryScope::scope(scope)));
+            return Some(CountryScope::scope(scope));
         }
+        // XXX: Fix province ref somehow...
         use std::str::FromStr;
         if let Ok(_) = u32::from_str(key) {
-            return Ok(Some(Self::any_owned_province));
+            return Some(Self::any_owned_province);
         }
-        Ok(None)
+        None
     }
 
     /*

@@ -161,7 +161,7 @@ impl TableEntry for Condition {
     fn make_special_decl() -> TokenStream {
         let enum_name = format_ident!("{}", Self::ENUM_NAME);
         quote! {
-            Scope(crate::Scope),
+            Scope(crate::CountryScope),
             Special(paradox::SpecialCondition<#enum_name>)
         }
     }
@@ -173,7 +173,7 @@ impl TableEntry for Condition {
                     ::try_parse(parser, key, value.clone())? {
                 return Ok(Self::Special(val));
             }
-            if let Some(val) = crate::Scope::get_scope(parser, key) {
+            if let Some(val) = crate::CountryScope::get_scope(parser, key) {
                 // XXX: Actually parse the inner scope.
                 let mut drain = ();
                 drain.read_from(parser, value)?;

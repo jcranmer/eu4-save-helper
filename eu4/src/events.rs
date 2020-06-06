@@ -28,6 +28,7 @@ pub struct EventList {
 
 #[derive(ParadoxParse, Default)]
 pub struct MeanTimeToHappen {
-    pub months: i32,
+    #[optional] pub days: u32,
+    #[optional] pub months: u32,
     #[repeated] pub modifier: Vec<Factor>,
 }
