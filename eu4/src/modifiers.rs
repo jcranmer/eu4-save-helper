@@ -131,7 +131,7 @@ paradox::modifier_list! {
 
     modifier(Country, diplomats, u32);
     modifier(Country, diplomatic_reputation, FixedPoint);
-    //modifier(Country, diplomatic_upkeep, type(1));
+    modifier(Country, diplomatic_upkeep, i32);
     modifier(Country, envoy_travel_time, FixedPoint);
     modifier(Country, fabricate_claims_cost, FixedPoint);
     modifier(Country, improve_relation_modifier, FixedPoint);
@@ -152,7 +152,7 @@ paradox::modifier_list! {
     modifier(Country, state_maintenance_modifier, FixedPoint);
     modifier(Country, inflation_action_cost, FixedPoint);
     modifier(Country, inflation_reduction, FixedPoint);
-    //modifier(Country, interest, type(-1));
+    modifier(Country, interest, FixedPoint);
     modifier(Country, development_cost, FixedPoint);
     modifier(Country, build_cost, FixedPoint);
     modifier(Country, build_time, FixedPoint);
@@ -227,13 +227,13 @@ paradox::modifier_list! {
     //modifier(Country, min_autonomy, type(50));
     modifier(Country, autonomy_change_time, FixedPoint);
     modifier(Country, harsh_treatment_cost, FixedPoint);
-    //modifier(Country, years_of_nationalism, type(-5));
+    modifier(Country, years_of_nationalism, i32);
     modifier(Country, min_autonomy_in_territories, FixedPoint);
 
-    //modifier(Country, liberty_desire, type(-10));
+    modifier(Country, liberty_desire, FixedPoint);
     modifier(Country, liberty_desire_from_subject_development, FixedPoint);
-    //modifier(Country, reduced_liberty_desire, type(10));
-    //modifier(Country, reduced_liberty_desire_on_same_continent, type(10));
+    modifier(Country, reduced_liberty_desire, FixedPoint);
+    modifier(Country, reduced_liberty_desire_on_same_continent, FixedPoint);
 
     modifier(Country, spy_offence, FixedPoint);
     modifier(Country, global_spy_defence, FixedPoint);
@@ -250,9 +250,9 @@ paradox::modifier_list! {
     modifier(Country, tolerance_heathen, FixedPoint);
     modifier(Country, papal_influence, FixedPoint);
     modifier(Country, church_power_modifier, FixedPoint);
-    //modifier(Country, monthly_fervor_increase, type(1));
+    modifier(Country, monthly_fervor_increase, FixedPoint);
     modifier(Country, harmonization_speed, FixedPoint);
-    //modifier(Country, yearly_harmony, type(1));
+    modifier(Country, yearly_harmony, FixedPoint);
     modifier(Country, monthly_piety, FixedPoint);
     modifier(Country, monthly_karma, FixedPoint);
     modifier(Country, enforce_religion_cost, FixedPoint);
@@ -273,7 +273,7 @@ paradox::modifier_list! {
 
     modifier(Country, caravan_power, FixedPoint);
     modifier(Country, merchants, u32);
-    //modifier(Country, placed_merchant_power, type(3));
+    modifier(Country, placed_merchant_power, FixedPoint);
     modifier(Country, global_trade_power, FixedPoint);
     modifier(Country, global_foreign_trade_power, FixedPoint);
     modifier(Country, global_own_trade_power, FixedPoint);
@@ -366,6 +366,7 @@ paradox::modifier_list! {
     modifier(Country, cb_on_primitives, bool);
     modifier(Country, cb_on_overseas, bool);
     modifier(Country, idea_claim_colonies, bool);
+    modifier(Country, may_convert_territories, bool);
     modifier(Country, may_explore, bool);
     modifier(Country, may_perform_slave_raid, bool);
     modifier(Country, may_recruit_female_generals, bool);

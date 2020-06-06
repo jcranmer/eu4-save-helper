@@ -29,6 +29,9 @@ pub struct GameData {
     #[parse = "common/religions"]
     religions: crate::ReligionList,
 
+    #[parse = "common/ideas"]
+    idea_groups: HashMap<IdKey<crate::IdeaGroup>, crate::IdeaGroup>,
+
     #[parse = "common/advisortypes"]
     advisors: HashMap<IdKey<crate::AdvisorType>, crate::AdvisorType>,
 
@@ -68,3 +71,4 @@ impl_box!(crate::Climate, 10);
 impl_box!(crate::TradeGood, 11);
 impl_box!(crate::AdvisorType, 12);
 impl_box!(crate::ScriptedTrigger, 13);
+impl_box!(crate::IdeaGroup, 14);
