@@ -29,11 +29,17 @@ pub struct GameData {
     #[parse = "common/religions"]
     religions: crate::ReligionList,
 
+    #[parse = "common/advisortypes"]
+    advisors: HashMap<IdKey<crate::AdvisorType>, crate::AdvisorType>,
+
     #[parse = "common/tradegoods"]
     tradegoods: crate::TradeGoodList,
 
     #[parse = "common/tradenodes"]
     trade: crate::TradeNodeList,
+
+    #[parse = "common/scripted_triggers"]
+    scripted_triggers: HashMap<IdKey<crate::ScriptedTrigger>, crate::ScriptedTrigger>,
 
     //#[parse = "events"]
     //events: crate::EventList,
@@ -60,3 +66,5 @@ impl_box!(crate::Culture, 8);
 impl_box!(crate::TradeNode, 9);
 impl_box!(crate::Climate, 10);
 impl_box!(crate::TradeGood, 11);
+impl_box!(crate::AdvisorType, 12);
+impl_box!(crate::ScriptedTrigger, 13);

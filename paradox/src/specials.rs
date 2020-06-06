@@ -11,6 +11,10 @@ pub enum SpecialCondition<S: Condition> {
     Not(Vec<S>),
     And(Vec<S>),
     Or(Vec<S>),
+    Hidden(Vec<S>),
+    If(Vec<S>, Vec<S>),
+    ElseIf(Vec<S>, Vec<S>),
+    Else(Vec<S>)
 }
 
 pub fn parse_key_pair_list<S: FromParadoxKeyPair>(parser: &mut Parser,
@@ -33,6 +37,35 @@ pub fn parse_key_pair_list<S: FromParadoxKeyPair>(parser: &mut Parser,
     Ok(vec)
 }
 
+fn parse_if<S: Condition>(parser: &mut Parser,
+                          value: Token) -> Result<(Vec<S>, Vec<S>)> {
+    let class_name = std::any::type_name::<Vec<S>>();
+    let mut vec = Vec::new();
+    value.expect_complex()?;
+    let condition = match parser.get_next_value()? {
+        Some((Some(key), value)) if key == "limit" => {
+            parse_key_pair_list::<S>(parser, value)?
+        },
+        _ => {
+            parser.validation_error("if", "", "missing limit", true, None)?;
+            Vec::new()
+        }
+    };
+    while let Some((key, value)) = parser.get_next_value()? {
+        match key {
+            None => {
+                parser.validation_error(class_name, "", "bad_key", false,
+                                        Some(value))?;
+            },
+            Some(key) => {
+                let key = key.into_owned();
+                vec.push(parser.try_parse(&key, value)?);
+            },
+        }
+    }
+    Ok((condition, vec))
+}
+
 impl <S: Condition> SpecialCondition<S> {
     pub fn try_parse(parser: &mut Parser, key: &str,
                      value: Token) -> Result<Option<Self>> {
@@ -40,6 +73,17 @@ impl <S: Condition> SpecialCondition<S> {
             "NOT" => Ok(Some(Self::Not(parse_key_pair_list(parser, value)?))),
             "AND" => Ok(Some(Self::And(parse_key_pair_list(parser, value)?))),
             "OR" => Ok(Some(Self::Or(parse_key_pair_list(parser, value)?))),
+            "hidden_trigger" =>
+                Ok(Some(Self::Hidden(parse_key_pair_list(parser, value)?))),
+            "if" => {
+                let (condition, result) = parse_if(parser, value)?;
+                Ok(Some(Self::If(condition, result)))
+            },
+            "else_if" => {
+                let (condition, result) = parse_if(parser, value)?;
+                Ok(Some(Self::ElseIf(condition, result)))
+            },
+            "else" => Ok(Some(Self::Else(parse_key_pair_list(parser, value)?))),
             _ => Ok(None)
         }
     }

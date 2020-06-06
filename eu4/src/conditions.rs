@@ -1,14 +1,53 @@
-use paradox::{FixedPoint, IdRef};
-use crate::{Continent, Country, Culture, CultureGroup, Religion, TradeGood};
+use paradox::{FixedPoint, IdRef, ParadoxParse};
+use crate::{AdvisorType, Continent, Country, Culture, CultureGroup, Religion, TradeGood};
+
+#[derive(Debug)]
+pub enum Variable<T> {
+    Value(T),
+    Scope(String),
+    Substitution(String),
+}
+
+impl <T: Default> Default for Variable<T> {
+    fn default() -> Self {
+        Self::Value(T::default())
+    }
+}
+
+impl <T: ParadoxParse + Default> ParadoxParse for Variable<T> {
+    fn read_from(&mut self, parser: &mut paradox::Parser, value: paradox::Token) -> Result<(), paradox::ParseError> {
+        if let Ok(s) = value.try_to_string() {
+            if s.contains("$") {
+                *self = Self::Substitution(s.into());
+                return Ok(());
+            }
+            match s {
+                "owner" | "controller" | "emperor" | "ROOT" | "FROM" | "PREV" |
+                    "THIS" | "CAPITAL" => {
+                        *self = Self::Scope(s.into());
+                        return Ok(());
+                    },
+                _ => {},
+            }
+        }
+        let mut v : T = Default::default();
+        v.read_from(parser, value)?;
+        *self = Self::Value(v);
+        Ok(())
+    }
+}
+
 paradox::condition_list!{
     condition(Country, <trade_good: TradeGood>, i32);
+    condition(Country, <advisor_type: AdvisorType>, i32);
     condition(Country, absolutism, FixedPoint);
     condition(Country, adm, i32);
     condition(Country, adm_power, i32);
     condition(Country, adm_tech, i32);
-    condition(Country, advisor, String);
+    condition(Country, advisor, IdRef<AdvisorType>);
     condition(Country, ai, bool);
     condition(Country, army_professionalism, FixedPoint);
+    condition(Country, consort_has_personality, String);
     condition(Country, culture, IdRef<Culture>);
     condition(Country, culture_group, IdRef<CultureGroup>);
     condition(Country, dip, i32);
@@ -35,10 +74,12 @@ paradox::condition_list!{
     condition(Country, has_opinion, ()); // XXX -- complex clauses...
     condition(Country, has_parliament, bool);
     condition(Country, has_regency, bool);
+    condition(Country, has_reform, String);
     condition(Country, has_ruler_flag, String);
     condition(Country, has_ruler_modifier, String);
     condition(Country, has_spawned_rebels, String);
     condition(Country, heir_age, i32);
+    condition(Country, heir_has_personality, String);
     condition(Country, is_at_war, bool);
     condition(Country, is_bankrupt, bool);
     condition(Country, is_client_nation, bool);
@@ -78,6 +119,7 @@ paradox::condition_list!{
     condition(Country, is_revolution_target, bool);
     condition(Country, is_statists_in_power, bool);
     condition(Country, is_subject, bool);
+    condition(Country, is_subject_of_type, String);
     condition(Country, is_trade_league_leader, bool);
     condition(Country, is_tribal, bool);
     condition(Country, is_vassal, bool);
@@ -146,24 +188,58 @@ paradox::condition_list!{
     condition(Country, religion, IdRef<Religion>);
     condition(Country, religion_group, String);
     condition(Country, religion_years, ()); // XXX -- complex clauses...
+    condition(Country, religious_school, ()); // XXX -- complex clauses...
+    condition(Country, reverse_has_opinion, ()); // XXX -- complex clauses...
     condition(Country, ruler_age, i32);
+    condition(Country, ruler_has_personality, String);
     condition(Country, ruler_religion, String);
+    condition(Country, secondary_religion, IdRef<Religion>);
     condition(Country, stability, FixedPoint);
     condition(Country, tag, IdRef<Country>);
     condition(Country, uses_karma, bool);
     condition(Country, war_exhaustion, FixedPoint);
     condition(Country, war_score, FixedPoint);
     condition(Country, war_with, String);
+    condition(Country, was_tag, IdRef<Country>);
 
     // XXX: these are the <*> conditions
     condition(Country, economic_ideas, i32);
+    condition(Province, enlightenment, FixedPoint);
 
     condition(Province, continent, IdRef<Continent>);
     condition(Province, development, u32);
+    condition(Province, devastation, FixedPoint);
+    condition(Province, has_building, String);
+    condition(Province, has_climate, String);
+    condition(Province, has_latent_trade_goods, IdRef<TradeGood>);
+    condition(Province, has_province_flag, String);
+    condition(Province, has_province_modifier, String);
+    condition(Province, has_terrain, String);
+    condition(Province, is_backing_current_issue, bool);
+    condition(Province, is_blockaded, bool);
+    condition(Province, is_capital, bool);
+    condition(Province, is_city, bool);
+    condition(Province, is_colony, bool);
+    condition(Province, is_empty, bool);
+    condition(Province, is_in_capital_area, bool);
+    condition(Province, is_island, bool);
+    condition(Province, is_looted, bool);
+    condition(Province, is_node_in_trade_company_region, bool);
+    condition(Province, is_overseas, bool);
+    condition(Province, is_owned_by_trade_company, bool);
+    condition(Province, is_prosperous, bool);
+    condition(Province, is_reformation_center, bool);
+    condition(Province, is_sea, bool);
+    condition(Province, is_state, bool);
+    condition(Province, is_territory, bool);
+    condition(Province, is_wasteland, bool);
+    condition(Province, province_id, i32);
     condition(Province, provincial_institution_progress, ()); // XXX -- complex
+    condition(Province, trade_goods, IdRef<TradeGood>);
 
     // XXX: these are really *
     condition(Country, current_age, String);
+    condition(Country, custom_trigger_tooltip, CustomTrigger);
     condition(Country, has_global_flag, String);
     condition(Country, is_year, u32);
     condition(Country, num_of_electors, i32);
@@ -172,11 +248,30 @@ paradox::condition_list!{
     condition(Country, total_number_of_cardinals, i32);
 }
 
-impl paradox::Condition for CountryCondition { }
-impl paradox::Condition for ProvinceCondition { }
+pub type CountryCondition = Condition;
+pub type ProvinceCondition = Condition;
 
-#[derive(paradox::ParadoxParse, Default)]
+impl paradox::Condition for Condition { }
+
+#[derive(ParadoxParse, Default)]
 pub struct Factor {
     pub factor: FixedPoint,
     #[modifiers] pub condition: Vec<CountryCondition>,
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct Weight {
+    pub factor: FixedPoint,
+    #[repeated] pub modifier: Vec<Factor>,
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct ScriptedTrigger {
+    #[modifiers] pub conditions: Vec<Condition>
+}
+
+#[derive(ParadoxParse, Default, Debug)]
+pub struct CustomTrigger {
+    pub tooltip: String,
+    #[modifiers] pub conditions: Vec<Condition>
 }

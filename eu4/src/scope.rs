@@ -40,12 +40,15 @@ paradox::scope_list!{
     scope_many(Country, Country, local_enemy);
     scope_many(Country, Country, neighbor_country);
     scope_many(Country, Province, owned_province);
-    scope_many(Country, Province, province);
+    scope_many(*, Province, province);
     scope_many(Country, Country, rival_country);
     scope_many(Country, Province, state_province);
     scope_many(Country, Province, states);
     scope_many(Country, Country, subject_country);
     scope_many(Country, Province, trade_node);
+    scope_many(Province, Province, empty_neighbor_province);
+    scope_many(Province, Province, neighbor_province);
+    scope_many(Province, Province, province_in_state);
 }
 
 #[allow(non_camel_case_types)]

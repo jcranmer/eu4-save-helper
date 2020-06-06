@@ -380,6 +380,9 @@ paradox::modifier_list! {
 
     modifier(Country, has_banners, i32);
     modifier(Province, local_has_banners, i32);
-    modifier(Province, land_forcelimit, FixedPoint);
-    modifier(Province, naval_forcelimit, FixedPoint);
+    //modifier(Province, land_forcelimit, FixedPoint);
+    //modifier(Province, naval_forcelimit, FixedPoint);
 }
+
+pub type CountryModifier = Modifier;
+pub type ProvinceModifier = Modifier;

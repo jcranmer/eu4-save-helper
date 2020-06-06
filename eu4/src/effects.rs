@@ -366,3 +366,6 @@ paradox::effect_list! {
     fn undiscover_country(scope: (), scope: Province) {}
 */
 }
+
+pub type CountryEffect = Effect;
+pub type ProvinceEffect = Effect;

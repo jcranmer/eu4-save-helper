@@ -2,6 +2,7 @@ type LocalizationKey = String; // XXX: LIES
 type ProvinceRef = u32; // XXX: LIES
 type RgbColor = Vec<u32>; // XXX: Lies
 
+mod advisors;
 mod conditions;
 mod country;
 mod culture;
@@ -14,6 +15,7 @@ mod religion;
 mod scope;
 mod trade;
 
+pub use advisors::*;
 pub use conditions::*;
 pub use country::*;
 pub use culture::*;

@@ -1,6 +1,5 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
-use std::collections::HashMap;
 use super::{Name, stringify};
 use syn::{parenthesized, token, Error, Ident, ItemFn, PatType, Result, Token, Type};
 use syn::parse::{Parse, ParseStream};
@@ -21,11 +20,11 @@ pub(crate) trait TableEntry : Parse {
     fn parse_list(input: ParseStream) -> Result<Vec<Self>>;
     fn scope(&self) -> &Ident;
 
-    fn make_special_decl(_scope: &Ident) -> TokenStream {
+    fn make_special_decl() -> TokenStream {
         TokenStream::new()
     }
 
-    fn early_parse(_scope: &Ident) -> TokenStream {
+    fn early_parse() -> TokenStream {
         TokenStream::new()
     }
 }
@@ -127,6 +126,7 @@ impl TableEntry for Condition {
     fn make_decl(&self) -> TokenStream {
         let name = &self.name.name();
         let ty = &self.ty;
+        let ty = quote! { Variable<#ty> };
         match &self.name {
             Name::Fixed(_) => quote! { #name(#ty) },
             Name::Dynamic(_, name_ty) =>
@@ -138,6 +138,7 @@ impl TableEntry for Condition {
         let name = &self.name.name();
         let stringy_name = stringify(name);
         let ty = &self.ty;
+        let ty = quote! { Variable<#ty> };
         match &self.name {
             Name::Fixed(_) => quote_spanned! { self.paren_token.span =>
                 #stringy_name => {
@@ -157,24 +158,22 @@ impl TableEntry for Condition {
         }
     }
 
-    fn make_special_decl(scope: &Ident) -> TokenStream {
-        let enum_name = format_ident!("{}{}", scope, Self::ENUM_NAME);
-        let scope_name = format_ident!("{}Scope", scope);
+    fn make_special_decl() -> TokenStream {
+        let enum_name = format_ident!("{}", Self::ENUM_NAME);
         quote! {
-            Scope(crate::#scope_name),
+            Scope(crate::Scope),
             Special(paradox::SpecialCondition<#enum_name>)
         }
     }
 
-    fn early_parse(scope: &Ident) -> TokenStream {
-        let enum_name = format_ident!("{}{}", scope, Self::ENUM_NAME);
-        let scope_name = format_ident!("{}Scope", scope);
+    fn early_parse() -> TokenStream {
+        let enum_name = format_ident!("{}", Self::ENUM_NAME);
         quote! {
             if let Some(val) = paradox::SpecialCondition::<#enum_name>
                     ::try_parse(parser, key, value.clone())? {
                 return Ok(Self::Special(val));
             }
-            if let Some(val) = crate::#scope_name::get_scope(parser, key)? {
+            if let Some(val) = crate::Scope::get_scope(parser, key) {
                 // XXX: Actually parse the inner scope.
                 let mut drain = ();
                 drain.read_from(parser, value)?;
@@ -318,35 +317,29 @@ impl TableEntry for Effect {
 }
 
 pub(crate) struct ScopedList<T: TableEntry> {
-    by_scopes: HashMap<Ident, Vec<T>>
+    entries: Vec<T>
 }
 
 impl <T: TableEntry> Parse for ScopedList<T> {
     fn parse(input: ParseStream) -> Result<Self> {
         let raw_list = T::parse_list(input)?;
-        let mut by_scopes : HashMap<Ident, Vec<T>> = HashMap::new();
-        for entry in raw_list {
-            by_scopes.entry(entry.scope().clone()).or_default().push(entry);
-        }
-        Ok(Self { by_scopes })
+        Ok(Self { entries: raw_list })
     }
 }
 
 impl <T: TableEntry> ScopedList<T> {
     pub fn generate_code(&self) -> TokenStream {
-        self.by_scopes.keys().map(|scope| {
-            let enum_decl = self.generate_enum(scope);
-            let try_from = self.generate_try_from(scope);
-            quote! { #enum_decl #try_from }
-        }).collect()
+        let enum_decl = self.generate_enum();
+        let try_from = self.generate_try_from();
+        quote! { #enum_decl #try_from }
     }
 
-    fn generate_enum(&self, scope: &Ident) -> TokenStream {
-        let modifiers = &self.by_scopes[scope];
-        let enum_name = format_ident!("{}{}", scope, T::ENUM_NAME);
+    fn generate_enum(&self) -> TokenStream {
+        let modifiers = &self.entries;
+        let enum_name = format_ident!("{}", T::ENUM_NAME);
         let enum_decls = modifiers.iter()
             .map(T::make_decl);
-        let extra_decl = T::make_special_decl(scope);
+        let extra_decl = T::make_special_decl();
         quote! {
             #[allow(non_camel_case_types)]
             #[derive(Debug)]
@@ -357,11 +350,11 @@ impl <T: TableEntry> ScopedList<T> {
         }
     }
 
-    fn generate_try_from(&self, scope: &Ident) -> TokenStream {
-        let enum_name = format_ident!("{}{}", scope, T::ENUM_NAME);
-        let modifiers = &self.by_scopes[scope];
+    fn generate_try_from(&self) -> TokenStream {
+        let enum_name = format_ident!("{}", T::ENUM_NAME);
+        let modifiers = &self.entries;
         let match_clauses = modifiers.iter().map(T::make_match_clause);
-        let early_parse = T::early_parse(scope);
+        let early_parse = T::early_parse();
         quote! {
             impl paradox::FromParadoxKeyPair for #enum_name {
                 fn try_from(parser: &mut paradox::Parser, key: &str,
