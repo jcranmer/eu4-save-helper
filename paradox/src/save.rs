@@ -1,7 +1,7 @@
 use crate::*;
 use byteorder::{ReadBytesExt, LittleEndian};
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Seek};
 use std::path::Path;
 use zip::{ZipArchive, result::ZipError};
 
@@ -15,13 +15,14 @@ impl From<ZipError> for ParseError {
 }
 
 struct BinaryLexer<R: Read> {
+    filename: String,
     offset: u32,
     reader: R,
 }
 
 impl <R: Read> BinaryLexer<R> {
-    fn new(reader: R) -> Self {
-        BinaryLexer { reader, offset: 0 }
+    fn new(reader: R, filename: String) -> Self {
+        BinaryLexer { reader, offset: 0, filename }
     }
 
     fn read_token(&mut self) -> Result<Token, ParseError> {
@@ -111,37 +112,93 @@ impl <R: Read> Lexer for BinaryLexer<R> {
     }
 
     fn get_location_info(&self) -> String {
-        format!("offset {:08x}", self.offset)
+        format!("{}:{:08x}", self.filename, self.offset)
+    }
+}
+
+struct ZipLexer<'a, R: Read + Seek> {
+    archive: &'a mut ZipArchive<R>,
+    path: &'a Path,
+    cur_index: usize,
+    cur_lexer: Box<dyn Lexer>
+}
+
+impl <'a, R: Read + Seek> ZipLexer<'a, R> {
+    fn new(archive: &'a mut ZipArchive<R>,
+           path: &'a Path) -> Result<Self, ParseError> {
+        let entry = archive.by_index(0)?;
+        let lexer = get_lexer(entry, path)?;
+        Ok(Self { archive, cur_index: 0, cur_lexer: lexer, path })
+    }
+
+    fn advance_to_next_file(&mut self) -> Result<bool, ParseError> {
+        self.cur_index += 1;
+        if self.cur_index >= self.archive.len() {
+            return Ok(false);
+        }
+
+        let entry = self.archive.by_index(self.cur_index);
+        if entry?.name().ends_with(".zip") {
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+}
+
+impl <R: Read + Seek> Lexer for ZipLexer<'_, R> {
+    fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
+        loop {
+            match (*self.cur_lexer).get_token()? {
+                None => {
+                    if !self.advance_to_next_file()? {
+                        return Ok(None);
+                    }
+                    self.cur_lexer = get_lexer(
+                        self.archive.by_index(self.cur_index)?,
+                        self.path)?;
+                    continue;
+                },
+                t => return Ok(t)
+            }
+        }
+    }
+
+    fn get_location_info(&self) -> String {
+        (*self.cur_lexer).get_location_info()
+    }
+}
+
+fn get_lexer(mut entry: zip::read::ZipFile,
+             path: &Path) -> Result<Box<dyn Lexer>, ParseError> {
+    let entry_name = format!("{}/{}", path.display(), entry.name());
+
+    // Read the first 6 bytes, to determine if it's a text or binary file.
+    let mut magic = [0u8; 6];
+    entry.read_exact(&mut magic)?;
+
+    // Read the rest of the file to a vector. It sucks that we have to do
+    // this, but we can't make the lifetimes work out with entry.
+    let mut data = Vec::with_capacity(entry.size() as usize - 6);
+    entry.read_to_end(&mut data)?;
+    let file = std::io::Cursor::new(data);
+
+    // Use the magic bytes to choose a text or a binary lexer.
+    if &magic[3..] == b"txt" {
+        Ok(Box::new(TextLexer::new(file, entry_name)) as Box::<dyn Lexer>)
+    } else if &magic[3..] == b"bin" {
+        Ok(Box::new(BinaryLexer::new(file, entry_name)) as Box::<dyn Lexer>)
+    } else {
+        Err(ParseError::Parse(Token::String(String::from_utf8_lossy(&magic).into())))
     }
 }
 
 pub fn load_savegame<T: ParadoxParse + Default>(path: &Path, game_data: &mut GameData)
         -> Result<T, ParseError> {
     let mut archive = ZipArchive::new(File::open(path)?)?;
-    // This is really bad behavior, but we require a 'static bounds on the
-    // parse file, even though it's safe because we only need to borrow it for
-    // as long as parse() is called.
-    let laundered_archive : &'static mut _ = unsafe {
-        (&mut archive as *mut ZipArchive<_>).as_mut().unwrap()
-    };
-    // Gamestate appears to always be the first entry in the index.
-    let mut file = laundered_archive.by_index(0)?;
+    let mut lexer = ZipLexer::new(&mut archive, path)?;
     let mut gamestate = T::default();
-
-    // The first 6 bytes will tell us if it's a binary or save file.
-    let mut magic = [0u8; 6];
-    file.read_exact(&mut magic)?;
-    let lexer = if &magic[3..] == b"txt" {
-        Box::new(TextLexer::new(file, path.to_string_lossy().into()))
-            as Box::<dyn Lexer>
-    } else if &magic[3..] == b"bin" {
-        Box::new(BinaryLexer::new(file))
-            as Box::<dyn Lexer>
-    } else {
-        return Err(ParseError::Parse(Token::String(String::from_utf8_lossy(&magic).into())));
-    };
-
-    Parser::new(lexer, game_data).parse(&mut gamestate)?;
+    Parser::new(&mut lexer, game_data).parse(&mut gamestate)?;
 
     Ok(gamestate)
 }

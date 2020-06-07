@@ -227,14 +227,15 @@ pub enum ParseError {
 }
 
 pub struct Parser<'a> {
-    lexer: Box<dyn Lexer>,
+    lexer: &'a mut dyn Lexer,
     depth: u32,
     saved_token: Option<Token>,
     game_data: &'a mut crate::GameData
 }
 
 impl <'a> Parser<'a> {
-    pub fn new(lexer: Box<dyn Lexer>, game_data: &mut crate::GameData) -> Parser {
+    pub fn new(lexer: &'a mut dyn Lexer,
+               game_data: &'a mut crate::GameData) -> Parser<'a> {
         Parser { lexer, depth: 0, saved_token: None, game_data }
     }
 
@@ -386,8 +387,8 @@ pub fn load_directory(path: &Path, data: &mut dyn ParadoxParse,
     for path in files {
         let filename = path.to_string_lossy().into();
         let file = File::open(path)?;
-        let lexer = TextLexer::new(file, filename);
-        Parser::new(Box::new(lexer), gamedata).parse(data)?;
+        let mut lexer = TextLexer::new(file, filename);
+        Parser::new(&mut lexer, gamedata).parse(data)?;
     }
     Ok(())
 }

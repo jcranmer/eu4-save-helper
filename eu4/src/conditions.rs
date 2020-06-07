@@ -48,7 +48,6 @@ paradox::condition_list!{
     condition(Country, adm_tech, i32);
     condition(Country, advisor, IdRef<AdvisorType>);
     condition(Country, ai, bool);
-    condition(Country, always, bool);
     condition(Country, army_professionalism, FixedPoint);
     condition(Country, army_tradition, FixedPoint);
     condition(Country, can_heir_be_child_of_consort, bool);
@@ -283,6 +282,7 @@ paradox::condition_list!{
 
     // XXX: these are really *
     condition(Country, <scripted_trigger: ScriptedTrigger>, ()); // XXX -- arguments
+    condition(Country, always, bool);
     condition(Country, current_age, String);
     condition(Country, custom_trigger_tooltip, CustomTrigger);
     condition(Country, has_global_flag, String);
