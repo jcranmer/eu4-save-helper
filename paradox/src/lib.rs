@@ -46,7 +46,13 @@ pub fn get_default_steam_dir() -> PathBuf {
     }
 
     steam_dir.push("steam");
+    // Check for both SteamApps and steamapps, both seem to have been used at
+    // some point.
     steam_dir.push("SteamApps");
+    if !steam_dir.is_dir() {
+        steam_dir.pop();
+        steam_dir.push("steamapps");
+    }
     steam_dir.push("common");
     steam_dir
 }

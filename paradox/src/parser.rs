@@ -312,6 +312,11 @@ impl <'a> Parser<'a> {
                 self.depth -= 1;
                 Ok(None)
             },
+            Some(Token::RBrace) if self.depth == 0 => {
+                eprintln!("Warning: extraneous }} at {}",
+                          self.lexer.get_location_info());
+                Ok(None)
+            },
             Some(Token::LBrace) => {
                 self.depth += 1;
                 Ok(Some((None, Token::LBrace)))
