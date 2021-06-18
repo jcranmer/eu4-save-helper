@@ -16,8 +16,7 @@ macro_rules! from_string {
     {$T:ty} => {
         impl ParadoxParse for $T {
             fn read_from(&mut self, _: &mut Parser, val: Token) -> ParseResult {
-                let parsed = convert_err(<$T>::from_str(val.try_to_string()?))?;
-                std::mem::replace(self, parsed);
+                *self = convert_err(<$T>::from_str(val.try_to_string()?))?;
                 Ok(())
             }
         }
@@ -29,8 +28,7 @@ macro_rules! from_string {
                     *self = val;
                     return Ok(());
                 }
-                let parsed = convert_err(<$T>::from_str(val.try_to_string()?))?;
-                std::mem::replace(self, parsed);
+                *self = convert_err(<$T>::from_str(val.try_to_string()?))?;
                 Ok(())
             }
         }
@@ -50,8 +48,7 @@ impl ParadoxParse for Date {
             *self = crate::date::convert_date(val as u32);
             return Ok(());
         }
-        let parsed = convert_err(val.try_to_string()?.parse())?;
-        std::mem::replace(self, parsed);
+        *self = convert_err(val.try_to_string()?.parse())?;
         Ok(())
     }
 }
