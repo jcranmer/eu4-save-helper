@@ -61,7 +61,7 @@ pub trait BoxedValue {
 
 #[derive(Ord, PartialOrd, Copy, Clone)]
 pub struct IdKey<T: BoxedValue> {
-    index: u16,
+    index: u32,
     _data: PhantomData<T>
 }
 
@@ -100,9 +100,9 @@ impl <T: BoxedValue> IdKey<T> {
     }
 }
 
-#[derive(Ord, PartialOrd, Copy, Clone)]
+#[derive(Ord, PartialOrd)]
 pub struct IdRef<T: BoxedValue> {
-    index: u16,
+    pub index: u32,
     _data: PhantomData<T>
 }
 
@@ -111,6 +111,11 @@ impl <T: BoxedValue> IdRef<T> {
         let id_box = data.get_id_box::<T>();
         id_box.get_index(key)
             .map(|index| Self { index, _data: PhantomData })
+    }
+
+    pub fn to_str(self, data: &GameData) -> &str {
+        let id_box = data.get_id_box::<T>();
+        id_box.get_string(self.index)
     }
 }
 
@@ -141,6 +146,13 @@ impl <T: BoxedValue> PartialEq for IdRef<T> {
 }
 
 impl <T: BoxedValue> Eq for IdRef<T> { }
+
+impl <T: BoxedValue> Copy for IdRef<T> { }
+impl <T: BoxedValue> Clone for IdRef<T> {
+    fn clone(&self) -> Self {
+        Self { index: self.index, _data: PhantomData }
+    }
+}
 
 impl <T: BoxedValue> ParadoxParse for IdRef<T> {
     fn read_from(&mut self, parser: &mut Parser, val: Token) -> Result<()> {

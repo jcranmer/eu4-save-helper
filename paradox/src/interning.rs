@@ -4,7 +4,7 @@ use std::convert::TryInto;
 /// indexing for every interned string.
 pub struct IdBox {
     string_table: String,
-    indexes: Vec<(u16, u16)>
+    indexes: Vec<(u32, u32)>
 }
 
 impl IdBox {
@@ -17,7 +17,7 @@ impl IdBox {
 
     /// Add a string to the collection. If it already exists, return the index
     /// of the string. Otherwise, return None.
-    pub fn add_string(&mut self, string: &str) -> u16 {
+    pub fn add_string(&mut self, string: &str) -> u32 {
         let found = self.get_index(string);
         if let Some(idx) = found {
             idx
@@ -31,11 +31,11 @@ impl IdBox {
     }
 
     /// Return the index of the string in the collection, if it exists.
-    pub fn get_index(&self, string: &str) -> Option<u16> {
+    pub fn get_index(&self, string: &str) -> Option<u32> {
         self.string_pairs()
             .enumerate()
             .find_map(|(i, (_, s))| if string == s {
-                Some((i + 1) as u16)
+                Some((i + 1) as u32)
             } else {
                 None
             })
@@ -49,21 +49,21 @@ impl IdBox {
     /// Return the string located at the given index.
     ///
     /// Panics if the index is out of bounds.
-    pub fn get_string(&self, index: u16) -> &str {
+    pub fn get_string(&self, index: u32) -> &str {
         if index == 0 {
             return "";
         }
-        let (base, len) : (u16, u16) = self.indexes[(index - 1) as usize];
-        let base : usize = base.into();
-        let len : usize = len.into();
+        let (base, len) : (u32, u32) = self.indexes[(index - 1) as usize];
+        let base : usize = base.try_into().unwrap();
+        let len : usize = len.try_into().unwrap();
         &self.string_table[base..base + len]
     }
 
-    fn string_pairs(&self) -> impl Iterator<Item=(u16, &str)> + '_ {
+    fn string_pairs(&self) -> impl Iterator<Item=(u32, &str)> + '_ {
         let strings = &self.string_table;
         self.indexes.iter()
             .map(move |&(start, len)| {
-                (start, &strings[start.into()..(start + len).into()])
+                (start, &strings[start as usize..(start + len) as usize])
             })
     }
 }
