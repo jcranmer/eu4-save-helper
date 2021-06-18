@@ -14,8 +14,8 @@ pub struct GameData {
     #[parse = "map/region.txt"]
     regions: HashMap<IdKey<crate::Region>, crate::Region>,
 
-    #[parse = "map/superregion.txt"]
-    superregions: HashMap<IdKey<crate::Superregion>, Vec<IdRef<crate::Region>>>,
+    //#[parse = "map/superregion.txt"]
+    //superregions: HashMap<IdKey<crate::Superregion>, Vec<IdRef<crate::Region>>>,
 
     #[parse = "map/continent.txt"]
     continents: HashMap<IdKey<crate::Continent>, Vec<u32>>,

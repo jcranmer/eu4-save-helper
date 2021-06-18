@@ -144,7 +144,7 @@ impl ScopeList {
                 let data = parser.get_game_data();
                 match key {
                     "FROM" => Some(Self::From),
-                    "ROOT" => Some(Self::Root),
+                    "ROOT" | "root" => Some(Self::Root),
                     "PREV" => Some(Self::Prev),
                     "THIS" => Some(Self::This),
                     _ => #( #match_stmt )* { None }

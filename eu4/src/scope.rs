@@ -27,6 +27,7 @@ paradox::scope_list!{
     scope(Province, Country, strongest_trade_power);
     scope(Province, Province, area);
     scope(Province, Province, sea_zone);
+    scope(Province, Province, area_for_scope_province);
 
     scope_many(Country, Province, active_trade_node);
     scope_many(Country, Country, ally);

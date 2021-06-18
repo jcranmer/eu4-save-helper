@@ -71,6 +71,10 @@ paradox::modifier_list! {
     modifier(Country, amount_of_banners, FixedPoint);
     modifier(Country, war_taxes_cost_modifier, FixedPoint);
     modifier(Country, leader_cost, FixedPoint);
+    modifier(Country, special_unit_forcelimit, FixedPoint);
+    modifier(Country, manpower_in_true_faith_provinces, FixedPoint);
+    modifier(Country, mercenary_manpower, FixedPoint);
+    modifier(Country, military_tactics, FixedPoint);
     modifier(Country, navy_tradition, FixedPoint);
     modifier(Country, navy_tradition_decay, FixedPoint);
     modifier(Country, naval_tradition_from_battle, FixedPoint);
@@ -110,6 +114,9 @@ paradox::modifier_list! {
     modifier(Country, admiral_skill_gain_modifier, FixedPoint);
     modifier(Country, movement_speed_onto_off_boat_modifier, FixedPoint);
     modifier(Country, global_naval_barrage_cost, FixedPoint);
+    modifier(Country, allowed_marine_fraction, FixedPoint);
+    modifier(Country, flagship_cost, FixedPoint);
+    modifier(Country, disengagement_chance, FixedPoint);
 
     //modifier(Country, flagship_durability, type(1));
     //modifier(Country, flagship_morale, type(1));
@@ -154,8 +161,10 @@ paradox::modifier_list! {
     modifier(Country, inflation_reduction, FixedPoint);
     modifier(Country, interest, FixedPoint);
     modifier(Country, development_cost, FixedPoint);
+    modifier(Country, tribal_development_growth, FixedPoint);
     modifier(Country, build_cost, FixedPoint);
     modifier(Country, build_time, FixedPoint);
+    modifier(Country, great_project_upgrade_cost, FixedPoint);
     modifier(Country, administrative_efficiency, FixedPoint);
     modifier(Country, core_creation, FixedPoint);
     modifier(Country, core_decay_on_your_own, FixedPoint);
@@ -207,6 +216,7 @@ paradox::modifier_list! {
     modifier(Country, meritocracy, FixedPoint);
     modifier(Country, monthly_militarized_society, FixedPoint);
     modifier(Country, yearly_tribal_allegiance, FixedPoint);
+    modifier(Country, monthly_federation_favor_growth, FixedPoint);
     //modifier(Country, <faction>_influence, FixedPoint);
     modifier(Country, imperial_authority, FixedPoint);
     modifier(Country, imperial_authority_value, FixedPoint);
@@ -215,6 +225,15 @@ paradox::modifier_list! {
     //modifier(Country, candidate_random_bonus, type(1));
     modifier(Country, reelection_cost, FixedPoint);
     modifier(Country, reform_progress_growth, FixedPoint);
+    modifier(Country, monthly_reform_progress_modifier, FixedPoint);
+    //modifier(Country, governing_capacity, type(100));
+    modifier(Country, governing_capacity_modifier, FixedPoint);
+    modifier(Country, governing_cost, FixedPoint);
+    modifier(Country, state_governing_cost, FixedPoint);
+    modifier(Country, trade_company_governing_cost, FixedPoint);
+    modifier(Country, expand_administration_cost, FixedPoint);
+    modifier(Country, yearly_revolutionary_zeal, FixedPoint);
+    modifier(Country, max_revolutionary_zeal, FixedPoint);
 
     modifier(Country, culture_conversion_cost, FixedPoint);
     modifier(Country, num_accepted_cultures, i32);
@@ -267,6 +286,7 @@ paradox::modifier_list! {
     modifier(Country, native_uprising_chance, FixedPoint);
     modifier(Country, native_assimilation, FixedPoint);
     modifier(Country, migration_cooldown, FixedPoint);
+    modifier(Country, migration_cost, FixedPoint);
     modifier(Country, global_tariffs, FixedPoint);
     modifier(Country, treasure_fleet_income, FixedPoint);
     modifier(Country, expel_minorities_cost, FixedPoint);
@@ -288,6 +308,18 @@ paradox::modifier_list! {
     modifier(Country, ship_power_propagation, FixedPoint);
     modifier(Country, center_of_trade_upgrade_cost, FixedPoint);
     modifier(Country, trade_company_investment_cost, FixedPoint);
+
+    // XXX: this should be estate-based.
+    modifier(Country, brahmins_hindu_loyalty_modifier, FixedPoint);
+    modifier(Country, brahmins_muslim_loyalty_modifier, FixedPoint);
+    modifier(Country, burghers_loyalty_modifier, FixedPoint);
+    modifier(Country, church_loyalty_modifier, FixedPoint);
+    modifier(Country, dhimmi_loyalty_modifier, FixedPoint);
+    modifier(Country, nobles_loyalty_modifier, FixedPoint);
+    modifier(Country, vaisyas_loyalty_modifier, FixedPoint);
+    modifier(Country, brahmins_hindu_influence_modifier, FixedPoint);
+    modifier(Country, burghers_influence_modifier, FixedPoint);
+    modifier(Country, pr_captains_influence, FixedPoint);
 
     /* == Province modifiers == */
     //modifier(Province, institution_growth, type(1));

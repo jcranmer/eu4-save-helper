@@ -61,7 +61,7 @@ pub struct Gamestate {
     pub trade_company_manager: (),
     pub tech_level_dates: (), // it's a [(String, Date); 3]
     pub idea_dates: HashMap<String, Date>,
-    pub checksum: String,
+    #[repeated] pub checksum: Vec<String>,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -457,6 +457,10 @@ pub struct Country {
     #[optional] pub active_disaster: String,
     #[optional] pub subject_interactions: (),
     #[optional] pub support_independence: (),
+    #[optional] pub update_supply_range: bool,
+    #[optional] pub absolutism: FixedPoint,
+    #[optional] pub has_circumnavigated_world: bool,
+    #[optional] pub active_policy: (),
 }
 
 #[derive(ParadoxParse, Default)]
