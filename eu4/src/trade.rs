@@ -20,12 +20,12 @@ pub struct TradeNode {
     #[optional]
     color: RgbColor,
     #[repeated]
-    outgoing: Vec<TradeEdge>,
+    pub outgoing: Vec<TradeEdge>,
 }
 
 #[derive(ParadoxParse, Default, Debug)]
 pub struct TradeEdge {
-    name: String, // XXX: tradenode ref
+    pub name: String, // XXX: tradenode ref
     path: Vec<ProvinceRef>,
     control: Vec<f64>
 }

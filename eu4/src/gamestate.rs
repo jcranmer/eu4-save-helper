@@ -62,11 +62,19 @@ pub struct Gamestate {
     pub tech_level_dates: (), // it's a [(String, Date); 3]
     pub idea_dates: HashMap<String, Date>,
     #[repeated] pub checksum: Vec<String>,
+    #[optional] pub player: CountryRef,
 }
 
 #[derive(ParadoxParse, Default)]
 pub struct Trade {
     #[repeated] pub node: Vec<TradeNode>,
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct TradeIncoming {
+    pub add: FixedPoint,
+    pub value: FixedPoint,
+    pub from: i32,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -88,7 +96,7 @@ pub struct TradeNode {
     #[optional] pub highest_power: FixedPoint,
     #[optional] pub pirate_hunt: FixedPoint,
     #[optional] pub total_privateer_power: FixedPoint,
-    #[repeated] pub incoming: Vec<()>,
+    #[repeated] pub incoming: Vec<TradeIncoming>,
     pub trade_goods_size: Vec<FixedPoint>,
     #[optional] pub top_provinces: Vec<CountryRef>,
     #[optional] pub top_provinces_values: Vec<FixedPoint>,
@@ -97,6 +105,10 @@ pub struct TradeNode {
     #[optional] pub trade_company_region: bool,
     pub most_recent_treasure_ship_passage: Date,
     #[collect] pub country_info: HashMap<String, CountryTradeNode>,
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct CountryTradeNodeModifier {
 }
 
 #[derive(ParadoxParse, Default)]
@@ -115,8 +127,6 @@ pub struct CountryTradeNode {
     #[optional] pub steer_power: i32,
     #[optional] pub add: FixedPoint,
     #[optional] pub already_sent: FixedPoint,
-    #[optional] pub _something_something: FixedPoint,
-    #[optional] pub _something_something2: FixedPoint,
     #[optional] pub has_trader: bool,
     #[optional] pub has_capital: bool,
     #[optional] pub light_ship: i32,
@@ -126,9 +136,16 @@ pub struct CountryTradeNode {
     #[optional] pub t_to: HashMap<CountryRef, FixedPoint>,
     #[optional] pub trading_policy: String,
     #[optional] pub trading_policy_date: Date,
-    #[optional] pub modifier: (),
+    #[repeated] pub modifier: Vec<()>,
     #[optional] pub privateer_mission: FixedPoint,
     #[optional] pub privateer_money: FixedPoint,
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct AppliedModifiers {
+    //pub modifier: IdRef<EventModifier>,
+    pub date: Date,
+    #[optional] pub hidden: bool,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -327,7 +344,6 @@ pub struct Country {
     #[optional] pub war_exhaustion: FixedPoint,
     #[optional] pub monthly_war_exhaustion: FixedPoint,
     #[optional] pub last_bankrupt: Date,
-    pub can_take_wartaxes: bool,
     pub land_maintenance: FixedPoint,
     pub naval_maintenance: FixedPoint,
     pub colonial_maintenance: FixedPoint,
@@ -371,7 +387,7 @@ pub struct Country {
     #[optional] pub merchants: (),
     #[optional] pub missionaries: (),
     #[optional] pub diplomats: (),
-    #[repeated] pub modifier: Vec<()>,
+    #[repeated] pub modifier: Vec<AppliedModifiers>,
     pub manpower: FixedPoint,
     pub max_manpower: FixedPoint,
     #[optional] pub sailors: FixedPoint,
@@ -437,7 +453,7 @@ pub struct Country {
     #[optional] pub num_ships_privateering: i32,
     #[optional] pub saved_names: (),
     #[optional] pub tribal_allegiance: FixedPoint,
-    #[optional] pub wartax: i32,
+    #[optional] pub wartax: bool,
     #[optional] pub condottieri_client: Vec<CountryRef>,
     #[optional] pub hired_condottieri_from: Vec<CountryRef>,
     #[repeated] pub previous_country_tags: Vec<CountryRef>,
@@ -461,6 +477,13 @@ pub struct Country {
     #[optional] pub absolutism: FixedPoint,
     #[optional] pub has_circumnavigated_world: bool,
     #[optional] pub active_policy: (),
+    #[optional] pub mercenary_company: (),
+    #[optional] pub used_governing_capacity: FixedPoint,
+    #[optional] pub hre_vote: i32,
+    #[optional] pub force_converted: String,
+    #[optional] pub interactions_last_used: (),
+    #[optional] pub last_sent_peace_offer_date: Date,
+    #[optional] pub num_expanded_administration: i32,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -551,6 +574,8 @@ pub struct Province {
     #[optional] pub latent_trade_goods: (),
     #[optional] pub active_trade_company: bool,
     #[optional] pub center_of_religion: bool,
+    #[optional] pub native_culture: IdRef<Culture>,
+    #[optional] pub country_improve_count: (),
 }
 
 #[derive(ParadoxParse, Default)]

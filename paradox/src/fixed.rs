@@ -1,10 +1,16 @@
 use std::fmt;
+use std::iter::Sum;
 
 /// A fixed point integer, with a base of 1000.
 /// This means that 0.001 + 0.001 = 0.002--there are three decimal places of
 /// accuracy.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Default)]
 pub struct FixedPoint(pub(crate) i32);
+
+impl FixedPoint {
+    pub const ZERO: Self = FixedPoint(0);
+    pub const ONE: Self = FixedPoint(1000);
+}
 
 impl fmt::Display for FixedPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -55,6 +61,13 @@ impl ops::Div for FixedPoint {
     }
 }
 
+impl ops::Neg for FixedPoint {
+    type Output = FixedPoint;
+    fn neg(self) -> FixedPoint {
+        Self(-self.0)
+    }
+}
+
 impl ops::AddAssign for FixedPoint {
     fn add_assign(&mut self, other: FixedPoint) {
         self.0 += other.0;
@@ -75,7 +88,7 @@ impl ops::MulAssign for FixedPoint {
 
 impl ops::DivAssign for FixedPoint {
     fn div_assign(&mut self, other: FixedPoint) {
-        self.0 = ((other.0 as i64 * 1000) / self.0 as i64) as i32;
+        self.0 = ((self.0 as i64 * 1000) / other.0 as i64) as i32;
     }
 }
 
@@ -88,6 +101,19 @@ impl From<i32> for FixedPoint {
 impl From<f32> for FixedPoint {
     fn from(val: f32) -> Self {
         FixedPoint((val * 1000.0) as i32)
+    }
+}
+
+impl From<FixedPoint> for f64 {
+    fn from(val: FixedPoint) -> Self {
+        f64::from(val.0) / 1000.0
+    }
+}
+
+impl Sum for FixedPoint {
+    fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
+        iter.reduce(ops::Add::add)
+            .unwrap_or_default()
     }
 }
 

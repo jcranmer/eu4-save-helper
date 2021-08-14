@@ -201,8 +201,9 @@ impl <I, T: ParadoxParse + Default> ParadoxParse for HashMap<IdKey<I>, T>
                     let mut parsed = T::default();
                     parsed.read_from(parser, v)?;
                     if self.insert(id, parsed).is_some() {
-                        return Err(ParseError::Constraint(
-                            format!("Duplicate key {} in map", key)));
+                        // Some maps have duplicate keys!
+                        //return Err(ParseError::Constraint(
+                        //    format!("Duplicate key {} in map", key)));
                     }
                 }
             }

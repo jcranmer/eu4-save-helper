@@ -266,6 +266,7 @@ paradox::condition_list!{
     condition(Province, development, u32);
     condition(Province, devastation, FixedPoint);
     condition(Province, expelling_minorities, bool);
+    condition(Province, has_active_triggered_province_modifier, String); // ???
     condition(Province, has_building, String);
     condition(Province, has_climate, String);
     condition(Province, has_latent_trade_goods, IdRef<TradeGood>);

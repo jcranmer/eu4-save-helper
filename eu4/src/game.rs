@@ -39,10 +39,16 @@ pub struct GameData {
     tradegoods: crate::TradeGoodList,
 
     #[parse = "common/tradenodes"]
-    trade: crate::TradeNodeList,
+    pub trade: crate::TradeNodeList,
 
     #[parse = "common/scripted_triggers"]
     scripted_triggers: HashMap<IdKey<crate::ScriptedTrigger>, crate::ScriptedTrigger>,
+
+    #[parse = "common/static_modifiers"]
+    pub static_modifiers: HashMap<IdKey<crate::EventModifier>, crate::EventModifier>,
+
+    #[parse = "common/event_modifiers"]
+    pub event_modifiers: HashMap<IdKey<crate::EventModifier>, crate::EventModifier>,
 
     //#[parse = "events"]
     //events: crate::EventList,
@@ -72,3 +78,4 @@ impl_box!(crate::TradeGood, 11);
 impl_box!(crate::AdvisorType, 12);
 impl_box!(crate::ScriptedTrigger, 13);
 impl_box!(crate::IdeaGroup, 14);
+impl_box!(crate::EventModifier, 15);

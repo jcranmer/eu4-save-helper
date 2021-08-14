@@ -61,7 +61,7 @@ pub trait BoxedValue {
 
 #[derive(Ord, PartialOrd, Copy, Clone)]
 pub struct IdKey<T: BoxedValue> {
-    index: u32,
+    pub index: u32,
     _data: PhantomData<T>
 }
 
@@ -97,6 +97,10 @@ impl <T: BoxedValue> IdKey<T> {
 
     pub fn new_via_gamedata(game_data: &mut GameData, string: &str) -> Self {
         Self::new(game_data.get_id_box_mut::<T>(), string)
+    }
+
+    pub fn to_str(self, game_data: &GameData) -> &str {
+        game_data.get_id_box::<T>().get_string(self.index)
     }
 }
 

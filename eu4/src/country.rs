@@ -34,6 +34,7 @@ impl ParadoxParse for CountryMap {
             ('D', 75), // MAX_CUSTOM_COUNTRIES in defines.lua
             ('C', 75), // MAX_COLONIAL_NATIONS in defines.lua
             ('K',100), // MAX_CLIENT_STATES in defines.lua
+            ('F',100), // MAX_FEDERATION_COUNTRIES in defines.lua
             ('E', 50), // MAX_ESTATE_COUNTRIES in defines.lua
             ('T', 75), // MAX_TRADING_CITIES in defines.lua
             ('O', 10), // MAX_OBSERVERS in defines.lua

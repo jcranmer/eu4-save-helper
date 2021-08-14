@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 paradox = { path = "paradox" }
 eu4 = { path = "eu4" }
+petgraph = "0.6"
 
 [dependencies.zip]
 version = "0.5"
