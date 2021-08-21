@@ -56,6 +56,14 @@ impl ParadoxParse for Date {
     }
 }
 
+impl ParadoxParse for ParserAtom {
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        let val = parser.get_token()?.ok_or(ParseError::Eof)?;
+        *self = ParserAtom::from(val);
+        Ok(())
+    }
+}
+
 macro_rules! impl_array {
     {$len:expr} => {
         impl <T: ParadoxParse> ParadoxParse for [T; $len] {
@@ -152,6 +160,20 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
             let mut val = T::default();
             val.read(parser)?;
             if self.insert(format!("{}", key), val).is_some() {
+                return Err(ParseError::Constraint(
+                        format!("Duplicate key {} in map", key)));
+            }
+            Ok(())
+        })
+    }
+}
+
+impl <T: ParadoxParse + Default> ParadoxParse for HashMap<ParserAtom, T> {
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        parser.parse_key_scope(|key, parser| {
+            let mut val = T::default();
+            val.read(parser)?;
+            if self.insert(key.clone(), val).is_some() {
                 return Err(ParseError::Constraint(
                         format!("Duplicate key {} in map", key)));
             }

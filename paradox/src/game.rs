@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::io::{Error, ErrorKind};
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
-use crate::{IdBox, ParadoxParse, ParseError, Parser};
+use crate::{IdBox, ParadoxParse, ParseError, Parser, ParserAtom};
 
 type Result<T> = std::result::Result<T, ParseError>;
 
@@ -54,7 +55,7 @@ impl GameData {
     }
 }
 
-pub trait BoxedValue {
+pub trait BoxedValue: Default {
     const TYPE_VALUE: u32;
     const DEFAULT_STRING: &'static str = "";
 }
@@ -175,5 +176,43 @@ impl <T: BoxedValue> ParadoxParse for IdRef<T> {
                     "not known to be in gamedata",
                     true, None).unwrap_err())?;
         Ok(())
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct TypeDefinition<T: BoxedValue + ParadoxParse> {
+    map: HashMap<ParserAtom, usize>,
+    values: Vec<(ParserAtom, T)>
+}
+
+impl <T: BoxedValue + ParadoxParse> TypeDefinition<T> {
+    pub fn get_names(&self) -> impl Iterator<Item = &ParserAtom> {
+        self.values.iter()
+            .map(|(name, _)| name)
+    }
+}
+
+impl <'a, T> std::ops::Index<&'a ParserAtom> for TypeDefinition<T>
+    where T: BoxedValue + ParadoxParse
+{
+    type Output = T;
+    fn index(&self, idx: &'a ParserAtom) -> &T {
+        &self.values[self.map[idx]].1
+    }
+}
+
+impl <T: BoxedValue + ParadoxParse> ParadoxParse for TypeDefinition<T> {
+    fn read(&mut self, parser: &mut Parser) -> Result<()> {
+        parser.parse_key_scope(|key, parser| {
+            let index = self.values.len();
+            if self.map.insert(key.clone(), index).is_some() {
+                return Err(ParseError::Constraint(
+                        format!("Duplicate key {} in map", key)));
+            }
+            let mut val = T::default();
+            val.read(parser)?;
+            self.values.push((key, val));
+            Ok(())
+        })
     }
 }

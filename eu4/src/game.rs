@@ -1,4 +1,4 @@
-use paradox::{BoxedValue, IdKey, IdRef};
+use paradox::{BoxedValue, IdKey, TypeDefinition};
 use std::collections::HashMap;
 
 #[derive(paradox::GameData)]
@@ -12,7 +12,7 @@ pub struct GameData {
     areas: HashMap<IdKey<crate::Area>, ()>,
 
     #[parse = "map/region.txt"]
-    regions: HashMap<IdKey<crate::Region>, crate::Region>,
+    regions: TypeDefinition<crate::Region>,
 
     //#[parse = "map/superregion.txt"]
     //superregions: HashMap<IdKey<crate::Superregion>, Vec<IdRef<crate::Region>>>,
@@ -30,16 +30,16 @@ pub struct GameData {
     religions: crate::ReligionList,
 
     #[parse = "common/ideas"]
-    idea_groups: HashMap<IdKey<crate::IdeaGroup>, crate::IdeaGroup>,
+    idea_groups: TypeDefinition<crate::IdeaGroup>,
 
     #[parse = "common/advisortypes"]
-    advisors: HashMap<IdKey<crate::AdvisorType>, crate::AdvisorType>,
+    advisors: TypeDefinition<crate::AdvisorType>,
 
     #[parse = "common/tradegoods"]
-    tradegoods: crate::TradeGoodList,
+    tradegoods: TypeDefinition<crate::TradeGood>,
 
     #[parse = "common/tradenodes"]
-    pub trade: crate::TradeNodeList,
+    pub trade: TypeDefinition<crate::TradeNode>,
 
     //#[parse = "common/scripted_triggers"]
     //scripted_triggers: HashMap<IdKey<crate::ScriptedTrigger>, crate::ScriptedTrigger>,

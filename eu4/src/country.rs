@@ -75,10 +75,13 @@ pub struct Region {
     #[optional] pub monsoon: [(); 2]
 }
 
+#[derive(Default)]
 pub struct Superregion {}
 
+#[derive(Default)]
 pub struct Continent {}
 
+#[derive(Default)]
 pub struct Climate {}
 
 #[derive(ParadoxParse, Default)]

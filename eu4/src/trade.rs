@@ -5,7 +5,7 @@ use crate::{
     ProvinceRef,
     RgbColor
 };
-use paradox::{IdKey, ParadoxParse};
+use paradox::{ParadoxParse, ParserAtom};
 
 #[derive(ParadoxParse, Default, Debug)]
 pub struct TradeNode {
@@ -25,7 +25,7 @@ pub struct TradeNode {
 
 #[derive(ParadoxParse, Default, Debug)]
 pub struct TradeEdge {
-    pub name: String, // XXX: tradenode ref
+    pub name: ParserAtom, // XXX: tradenode ref
     path: Vec<ProvinceRef>,
     control: Vec<f64>
 }
@@ -40,6 +40,3 @@ pub struct TradeGood {
     #[optional] rnw_latent_chance: u32,
     #[optional] trigger: (),
 }
-
-pub type TradeGoodList = std::collections::HashMap<IdKey<TradeGood>, TradeGood>;
-pub type TradeNodeList = std::collections::HashMap<IdKey<TradeNode>, TradeNode>;

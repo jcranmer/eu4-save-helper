@@ -40,7 +40,7 @@ type SimpleTradeGraph = Graph<SimpleTradeNode, SimpleTradeEdge>;
 
 struct TradeNetwork {
     graph: SimpleTradeGraph,
-    names: Vec<String>,
+    names: Vec<paradox::ParserAtom>,
     postorder: Vec<NodeIndex>,
     trade_efficiency: FixedPoint,
     collecting: Vec<NodeIndex>,
@@ -50,22 +50,25 @@ struct TradeNetwork {
 impl TradeNetwork {
     fn new(data: &GameData, gamestate: &Gamestate, us: &str) -> Self {
         // Build the graph structure from the game data.
-        let trade_box = data.base_info.get_id_box::<eu4::TradeNode>();
-        let mut names = Vec::with_capacity(trade_box.len());
-        let mut graph = SimpleTradeGraph::with_capacity(trade_box.len(),
-            trade_box.len() * 4);
-        for i in 1..=trade_box.len() {
+        let names : Vec<_> = data.trade.get_names()
+            .map(|name| name.clone())
+            .collect();
+        let mut graph = SimpleTradeGraph::with_capacity(names.len(),
+            names.len() * 4);
+        for _ in &names {
             graph.add_node(Default::default());
-            names.push(trade_box.get_string(i as u32).into());
         }
-        for (key, value) in &data.trade {
-            let source = NodeIndex::new(key.index as usize - 1);
+        let get_index = |name: &paradox::ParserAtom| {
+            NodeIndex::new(names.iter().position(|k| k == name).unwrap())
+        };
+        for name in &names {
+            let source = get_index(name);
+            let value = &data.trade[name];
             // Reverse the edges. Petgraph seems to put the newest edge at the
             // beginning of the list, but we want it to be at the end for
             // later usage in indexing.
             for edge in value.outgoing.iter().rev() {
-                let target_idx = trade_box.get_index(&edge.name).unwrap();
-                let target = NodeIndex::new(target_idx as usize - 1);
+                let target = get_index(&edge.name);
                 graph.add_edge(source, target, Default::default());
             }
         }
@@ -74,7 +77,7 @@ impl TradeNetwork {
         let mut merchant_collects = Vec::with_capacity(4);
         let mut merchant_steers = Vec::with_capacity(16);
         for gs_node in &gamestate.trade.node {
-            let tn_idx = NodeIndex::new(gs_node.definitions.index as usize - 1);
+            let tn_idx = get_index(&gs_node.definitions);
             println!("{}:", names[tn_idx.index()]);
             {
                 let mut node = &mut graph[tn_idx];
@@ -279,6 +282,7 @@ impl TradeNetwork {
 
 pub fn optimize_trade(data: &GameData, gamestate: &Gamestate, country: &str) {
     let tn = TradeNetwork::new(data, gamestate, country);
+    //tn.display_dot();
     let num_nodes = tn.graph.node_count();
     let mut trade_values = vec![Default::default(); num_nodes];
     let mut trade_fractions = vec![Default::default(); num_nodes];
@@ -297,5 +301,4 @@ pub fn optimize_trade(data: &GameData, gamestate: &Gamestate, country: &str) {
             println!("Steering {}->{}", tn.names[e.source().index()], tn.names[e.target().index()]);
         }
     }
-    //tn.display_dot();
 }
