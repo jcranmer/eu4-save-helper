@@ -15,7 +15,8 @@ fn convert_err<T, E: StdError + 'static>(val: Result<T, E>)
 macro_rules! from_string {
     {$T:ty} => {
         impl ParadoxParse for $T {
-            fn read_from(&mut self, _: &mut Parser, val: Token) -> ParseResult {
+            fn read(&mut self, parser: &mut Parser) -> ParseResult {
+                let val = parser.get_token()?.ok_or(ParseError::Eof)?;
                 *self = convert_err(<$T>::from_str(val.try_to_string()?))?;
                 Ok(())
             }
@@ -23,7 +24,8 @@ macro_rules! from_string {
     };
     {$T:ty, $arm:ident} => {
         impl ParadoxParse for $T {
-            fn read_from(&mut self, _: &mut Parser, val: Token) -> ParseResult {
+            fn read(&mut self, parser: &mut Parser) -> ParseResult {
+                let val = parser.get_token()?.ok_or(ParseError::Eof)?;
                 if let Token::$arm(val) = val {
                     *self = val;
                     return Ok(());
@@ -43,7 +45,8 @@ from_string!{String}
 from_string!{FixedPoint, Fixed}
 
 impl ParadoxParse for Date {
-    fn read_from(&mut self, _: &mut Parser, val: Token) -> ParseResult {
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        let val = parser.get_token()?.ok_or(ParseError::Eof)?;
         if let Token::Integer(val) = val {
             *self = crate::date::convert_date(val as u32);
             return Ok(());
@@ -56,28 +59,19 @@ impl ParadoxParse for Date {
 macro_rules! impl_array {
     {$len:expr} => {
         impl <T: ParadoxParse> ParadoxParse for [T; $len] {
-            fn read_from(&mut self, parser: &mut Parser,
-                         val: Token) -> ParseResult {
-                let class_name = std::any::type_name::<Self>();
-                val.expect_complex()?;
+            fn read(&mut self, parser: &mut Parser) -> ParseResult {
                 let mut i = 0;
-                while let Some((key, v)) = parser.get_next_value()? {
+                let class_name = std::any::type_name::<Self>();
+                parser.with_scope(|parser| {
                     if i == $len {
                         return parser.validation_error(class_name,
                             stringify!($len),
-                            "too many entries in list", true, Some(v));
+                            "too many entries in list", true, None);
                     }
-                    match key {
-                        None => {
-                            self[i].read_from(parser, v)?;
-                            i += 1;
-                        },
-                        Some(key) => {
-                            return parser.validation_error(class_name, &key,
-                                "unexpected key in list", true, Some(v));
-                        },
-                    }
-                }
+                    self[i].read(parser)?;
+                    i += 1;
+                    Ok(())
+                })?;
                 if i != $len {
                     return parser.validation_error(class_name, &i.to_string(),
                         "list terminated early", true, None);
@@ -122,7 +116,8 @@ impl_array!{31}
 impl_array!{32}
 
 impl ParadoxParse for bool {
-    fn read_from(&mut self, _: &mut Parser, val: Token) -> ParseResult {
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        let val = parser.get_token()?.ok_or(ParseError::Eof)?;
         if let Token::Bool(b) = val {
             *self = b;
             return Ok(());
@@ -141,115 +136,80 @@ impl ParadoxParse for bool {
 }
 
 impl <T: ParadoxParse + Default> ParadoxParse for Vec<T> {
-    fn read_from(&mut self, parser: &mut Parser, val: Token) -> ParseResult {
-        val.expect_complex()?;
-        while let Some((key, v)) = parser.get_next_value()? {
-            match key {
-                None => {
-                    let mut parsed = T::default();
-                    parsed.read_from(parser, v)?;
-                    self.push(parsed);
-                },
-                Some(key) => {
-                    return Err(ParseError::Constraint(
-                            format!("Unexpected key {} in list", key)));
-                },
-            }
-        }
-        Ok(())
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        parser.with_scope(|parser| {
+            let mut value = T::default();
+            value.read(parser)?;
+            self.push(value);
+            Ok(())
+        })
     }
 }
 
 impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
-    fn read_from(&mut self, parser: &mut Parser, val: Token) -> ParseResult {
-        val.expect_complex()?;
-        while let Some((key, v)) = parser.get_next_value()? {
-            match key {
-                None => {
-                    return Err(ParseError::Constraint(
-                            format!("Unexpected keyless value in map")));
-                },
-                Some(key) => {
-                    let key = key.into_owned();
-                    let mut parsed = T::default();
-                    parsed.read_from(parser, v)?;
-                    if self.insert(key.clone(), parsed).is_some() {
-                        return Err(ParseError::Constraint(
-                            format!("Duplicate key {} in map", key)));
-                    }
-                }
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        parser.parse_key_scope(|key, parser| {
+            let mut val = T::default();
+            val.read(parser)?;
+            if self.insert(format!("{}", key), val).is_some() {
+                return Err(ParseError::Constraint(
+                        format!("Duplicate key {} in map", key)));
             }
-        }
-        Ok(())
+            Ok(())
+        })
     }
 }
 
 impl <I, T: ParadoxParse + Default> ParadoxParse for HashMap<IdKey<I>, T>
     where I: BoxedValue, IdKey<I> : Eq + std::hash::Hash
 {
-    fn read_from(&mut self, parser: &mut Parser, val: Token) -> ParseResult {
-        val.expect_complex()?;
-        while let Some((key, v)) = parser.get_next_value()? {
-            match key {
-                None => {
-                    return Err(ParseError::Constraint(
-                            format!("Unexpected keyless value in map")));
-                },
-                Some(key) => {
-                    let id = IdKey::new(
-                        parser.get_game_data().get_id_box_mut::<I>(), &key);
-                    let mut parsed = T::default();
-                    parsed.read_from(parser, v)?;
-                    if self.insert(id, parsed).is_some() {
-                        // Some maps have duplicate keys!
-                        //return Err(ParseError::Constraint(
-                        //    format!("Duplicate key {} in map", key)));
-                    }
-                }
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        parser.parse_key_scope(|key, parser| {
+            let mut val = T::default();
+            val.read(parser)?;
+            let id = IdKey::new(
+                parser.get_game_data().get_id_box_mut::<I>(), &key);
+            if self.insert(id, val).is_some() {
+                // Some maps have duplicate keys!
+                //return Err(ParseError::Constraint(
+                //    format!("Duplicate key {} in map", key)));
             }
-        }
-        Ok(())
+            Ok(())
+        })
     }
 }
 
 impl <I, T: ParadoxParse + Default> ParadoxParse for HashMap<IdRef<I>, T>
     where I: BoxedValue, IdRef<I>: Default
 {
-    fn read_from(&mut self, parser: &mut Parser, val: Token) -> ParseResult {
-        val.expect_complex()?;
-        while let Some((key, v)) = parser.get_next_value()? {
-            match key {
-                None => {
-                    return Err(ParseError::Constraint(
-                            format!("Unexpected keyless value in map")));
-                },
-                Some(key) => {
-                    let mut id: IdRef<I> = Default::default();
-                    id.read_from(parser, Token::String(key.clone().into_owned()))?;
-                    let mut parsed = T::default();
-                    parsed.read_from(parser, v)?;
-                    if self.insert(id, parsed).is_some() {
-                        return Err(ParseError::Constraint(
-                            format!("Duplicate key {} in map", key)));
-                    }
-                }
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        parser.parse_key_scope(|key, parser| {
+            let mut id: IdRef<I> = Default::default();
+            parser.unget(Token::String(key.as_ref().into()));
+            id.read(parser)?;
+            let mut val = T::default();
+            val.read(parser)?;
+            if self.insert(id, val).is_some() {
+                return Err(ParseError::Constraint(
+                        format!("Duplicate key {} in map", key)));
             }
-        }
-        Ok(())
+            Ok(())
+        })
     }
 }
 
 impl ParadoxParse for () {
-    fn read_from(&mut self, parser: &mut Parser, val: Token) -> ParseResult {
-        match val {
-            Token::LBrace => {
-                while let Some((_, v)) = parser.get_next_value()? {
-                    let mut parsed = ();
-                    parsed.read_from(parser, v)?;
-                }
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        match parser.get_token()? {
+            None => Err(ParseError::Eof),
+            Some(Token::LBrace) => {
+                parser.unget(Token::LBrace);
+                parser.with_scope(|parser| {
+                    ().read(parser)
+                })
             },
-            _ => ()
+            Some(Token::RBrace) => Err(ParseError::Parse(Token::RBrace)),
+            Some(_) => Ok(()),
         }
-        Ok(())
     }
 }

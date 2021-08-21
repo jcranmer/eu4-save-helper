@@ -79,7 +79,8 @@ impl TableEntry for Modifier {
         quote_spanned! { self.paren_token.span =>
             #stringy_name => {
                 let mut parsee : #ty = Default::default();
-                parsee.read_from(parser, value)?;
+                parser.unget(value);
+                parsee.read(parser)?;
                 Ok(Self::#name(parsee))
             }
         }
@@ -143,7 +144,8 @@ impl TableEntry for Condition {
             Name::Fixed(_) => quote_spanned! { self.paren_token.span =>
                 #stringy_name => {
                     let mut parsee : #ty = Default::default();
-                    parsee.read_from(parser, value)?;
+                    parser.unget(value);
+                    parsee.read(parser)?;
                     Ok(Self::#name(parsee))
                 }
             },
@@ -151,7 +153,8 @@ impl TableEntry for Condition {
                 name if paradox::IdRef::<#name_ty>::from_str(name, parser.get_game_data()).is_some() => {
                     let id = paradox::IdRef::<#name_ty>::from_str(name, parser.get_game_data()).unwrap();
                     let mut parsee : #ty = Default::default();
-                    parsee.read_from(parser, value)?;
+                    parser.unget(value);
+                    parsee.read(parser)?;
                     Ok(Self::#name(id, parsee))
                 }
             }
@@ -175,8 +178,8 @@ impl TableEntry for Condition {
             }
             if let Some(val) = crate::CountryScope::get_scope(parser, key) {
                 // XXX: Actually parse the inner scope.
-                let mut drain = ();
-                drain.read_from(parser, value)?;
+                parser.unget(value);
+                ().read(parser)?;
                 return Ok(Self::Scope(val));
             }
         }
@@ -290,7 +293,8 @@ impl TableEntry for Effect {
         let body = if let Some(ty) = self.simple_ty() {
             quote_spanned! { ty.span() =>
                 let mut parsee: #ty = Default::default();
-                parsee.read_from(parser, value)?;
+                parser.unget(value);
+                parsee.read(parser)?;
                 Ok(Self::#name(parsee))
             }
         } else {
@@ -303,7 +307,8 @@ impl TableEntry for Effect {
                 #[derive(Default, paradox::ParadoxParse)]
                 struct StructAnon { #( #args ),* }
                 let mut parsee : StructAnon = Default::default();
-                parsee.read_from(parser, value)?;
+                parser.unget(value);
+                parsee.read(parser)?;
                 Ok(Self::#name { #( #copy_strings ),* })
             }
         };

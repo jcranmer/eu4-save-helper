@@ -38,7 +38,7 @@ pub struct TradeGood {
     #[optional] is_latent: bool,
     #[optional] is_valuable: bool,
     #[optional] rnw_latent_chance: u32,
-    #[optional] trigger: Vec<ProvinceCondition>,
+    #[optional] trigger: (),
 }
 
 pub type TradeGoodList = std::collections::HashMap<IdKey<TradeGood>, TradeGood>;

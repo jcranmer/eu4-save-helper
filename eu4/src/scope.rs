@@ -71,28 +71,6 @@ impl CountryScope {
         }
         None
     }
-
-    /*
-    fn parse_country_list(parser: &mut paradox::Parser, value: paradox::Token
-                          ) -> Result<Vec<Box<dyn paradox::Condition>>, paradox::ParseError> {
-        let mut vec = Vec::new();
-        value.expect_complex()?;
-        while let Some((key, value)) = parser.get_next_value()? {
-            match key {
-                None => {
-                    parser.validation_error("CountryCondition", "", "bad_key", false,
-                                            Some(value))?;
-                },
-                Some(key) => {
-                    let key = key.into_owned();
-                    let condition = Box::new(
-                        parser.try_parse::<crate::CountryCondition>(&key, value)?);
-                    vec.push(condition);
-                },
-            }
-        }
-        Ok(vec)
-    }*/
 }
 
 pub type ProvinceScope = CountryScope;

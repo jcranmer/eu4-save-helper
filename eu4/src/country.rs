@@ -1,4 +1,4 @@
-use paradox::{IdKey, IdRef, ParadoxParse, ParseError, Parser, Token};
+use paradox::{IdKey, IdRef, ParadoxParse, ParseError, Parser};
 use std::collections::HashMap;
 
 type ParseResult = Result<(), ParseError>;
@@ -7,27 +7,21 @@ type ParseResult = Result<(), ParseError>;
 pub struct CountryMap(HashMap<IdKey<Country>, Country>);
 
 impl ParadoxParse for CountryMap {
-    fn read_from(&mut self, parser: &mut Parser, val: Token) -> ParseResult {
-        val.expect_complex()?;
-        while let Some((key, value)) = parser.get_next_value()? {
-            match key {
-                None => {
-                    return Err(ParseError::Constraint("Need tag name".into()));
-                },
-                Some(key) => {
-                    let key = key.into_owned();
-                    let data = parser.get_game_data();
-                    let path = format!("common/{}", value.try_to_string()?);
-                    let mut result : Country = Default::default();
-                    data.parse_directory(&path, &mut result)?;
-                    let id = IdKey::new(data.get_id_box_mut::<Country>(), &key);
-                    if self.0.insert(id, result).is_some() {
-                        return Err(ParseError::Constraint(
-                            format!("Duplicate tag {}", key)));
-                    }
-                }
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        parser.parse_key_scope(|key, parser| {
+            let mut filename = String::default();
+            filename.read(parser)?;
+            let path = format!("common/{}", filename);
+            let mut result : Country = Default::default();
+            let data = parser.get_game_data();
+            data.parse_directory(&path, &mut result)?;
+            let id = IdKey::new(data.get_id_box_mut::<Country>(), &key);
+            if self.0.insert(id, result).is_some() {
+                return Err(ParseError::Constraint(
+                        format!("Duplicate tag {}", key)));
             }
-        }
+            Ok(())
+        })?;
 
         // Add dynamic tags
         const PAIRS: &[(char, u32)] = &[

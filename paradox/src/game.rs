@@ -2,7 +2,7 @@ use std::convert::TryInto;
 use std::io::{Error, ErrorKind};
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
-use crate::{IdBox, ParadoxParse, ParseError, Parser, Token};
+use crate::{IdBox, ParadoxParse, ParseError, Parser};
 
 type Result<T> = std::result::Result<T, ParseError>;
 
@@ -159,7 +159,8 @@ impl <T: BoxedValue> Clone for IdRef<T> {
 }
 
 impl <T: BoxedValue> ParadoxParse for IdRef<T> {
-    fn read_from(&mut self, parser: &mut Parser, val: Token) -> Result<()> {
+    fn read(&mut self, parser: &mut Parser) -> Result<()> {
+        let val = parser.get_token()?.ok_or(ParseError::Eof)?;
         let key = val.try_to_string()?;
         if key == T::DEFAULT_STRING {
             self.index = 0;

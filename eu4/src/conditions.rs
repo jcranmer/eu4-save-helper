@@ -15,7 +15,8 @@ impl <T: Default> Default for Variable<T> {
 }
 
 impl <T: ParadoxParse + Default> ParadoxParse for Variable<T> {
-    fn read_from(&mut self, parser: &mut paradox::Parser, value: paradox::Token) -> Result<(), paradox::ParseError> {
+    fn read(&mut self, parser: &mut paradox::Parser) -> Result<(), paradox::ParseError> {
+        let value = parser.get_token()?.unwrap();
         if let Ok(s) = value.try_to_string() {
             if s.contains("$") {
                 *self = Self::Substitution(s.into());
@@ -31,7 +32,8 @@ impl <T: ParadoxParse + Default> ParadoxParse for Variable<T> {
             }
         }
         let mut v : T = Default::default();
-        v.read_from(parser, value)?;
+        parser.unget(value);
+        v.read(parser)?;
         *self = Self::Value(v);
         Ok(())
     }
@@ -325,11 +327,12 @@ pub struct Factor {
     #[modifiers] pub condition: Vec<CountryCondition>,
 }
 
-#[derive(ParadoxParse, Default)]
+/*#[derive(ParadoxParse, Default)]
 pub struct Weight {
     pub factor: FixedPoint,
     #[repeated] pub modifier: Vec<Factor>,
-}
+}*/
+pub type Weight = ();
 
 #[derive(ParadoxParse, Default)]
 pub struct ScriptedTrigger {

@@ -1,13 +1,6 @@
 use eu4::{GameData, Gamestate};
 mod trade;
 
-fn compute_trade(_data: &GameData, gamestate: &Gamestate) {
-    for trade_node in &gamestate.trade.node {
-        println!("Trade node: {:?}", trade_node.definitions);
-        println!("Total value in node: {}", trade_node.current);
-    }
-}
-
 fn main() -> Result<(), paradox::ParseError> {
     let mut eu4data = eu4::GameData::new(
         &paradox::get_default_steam_dir().join("Europa Universalis IV"))?;
@@ -19,7 +12,6 @@ fn main() -> Result<(), paradox::ParseError> {
         )?;
     trade::optimize_trade(&eu4data, &gamestate,
                           gamestate.player.to_str(&eu4data.base_info));
-    //compute_trade(&eu4data, &gamestate);
 
     //let country_ref = eu4data.base_info.get_id_box::<eu4::Country>()
     //    .get_index("MCH").unwrap();

@@ -16,30 +16,12 @@ type Result<T> = std::result::Result<T, ParseError>;
 
 pub type UnparsedValue = Token;
 impl Token {
-    /// Return true if this is a simple value (string, integer, etc.).
-    fn is_simple_value(&self) -> bool {
-        match self {
-            Self::LBrace => false,
-            Self::RBrace | Self::Eq => false,
-            _ => true
-        }
-    }
-
     /// Convert the token into a string if it can be done.
     pub fn try_to_string(&self) -> Result<&str> {
         match self {
             Self::String(s) => Ok(&s),
             Self::Interned(s) => Ok(&s),
             t => Err(ParseError::Parse(t.clone()))
-        }
-    }
-
-    /// Return an error if the underlying value is not a complex (bracketed)
-    /// value.
-    pub fn expect_complex(self) -> Result<()> {
-        match self {
-            Self::LBrace => Ok(()),
-            t => Err(ParseError::Parse(t))
         }
     }
 }
@@ -58,14 +40,28 @@ impl From<Token> for Cow<'static, str> {
             Token::Unsigned(i) => i.to_string().into()
         }
     }
+}
 
+impl From<Token> for ParserAtom {
+    fn from(t:Token) -> Self {
+        match t {
+            Token::LBrace | Token::RBrace | Token::Eq =>
+                panic!("Shouldn't call this method if it's not a simple value"),
+            Token::String(s) => Self::from(s),
+            Token::Interned(s) => Self::from(s),
+            Token::Bool(b) => Self::from(if b { "yes" } else { "no" }),
+            Token::Fixed(f) => f.to_string().into(),
+            Token::Float(f) => f.to_string().into(),
+            Token::Integer(i) => i.to_string().into(),
+            Token::Unsigned(i) => i.to_string().into()
+        }
+    }
 }
 
 pub type ValuePair = (Option<Cow<'static, str>>, UnparsedValue);
 
 pub trait ParadoxParse {
-    fn read_from(&mut self, parser: &mut Parser,
-                 value: UnparsedValue) -> Result<()>;
+    fn read(&mut self, parser: &mut Parser) -> Result<()>;
 }
 
 pub trait FromParadoxKeyPair {
@@ -230,13 +226,76 @@ pub struct Parser<'a> {
     lexer: &'a mut dyn Lexer,
     depth: u32,
     saved_token: Option<Token>,
-    game_data: &'a mut crate::GameData
+    game_data: &'a mut crate::GameData,
+    scope: Vec<String>,
 }
 
 impl <'a> Parser<'a> {
     pub fn new(lexer: &'a mut dyn Lexer,
                game_data: &'a mut crate::GameData) -> Parser<'a> {
-        Parser { lexer, depth: 0, saved_token: None, game_data }
+        Parser { lexer, depth: 0, saved_token: None, game_data, scope: Vec::new() }
+    }
+
+    pub fn parse_key_scope<F>(&mut self, mut func: F) -> Result<()>
+        where F: FnMut(ParserAtom, &mut Self) -> Result<()>
+    {
+        let is_top = self.depth == 0;
+        if !is_top {
+            match self.get_token()? {
+                Some(Token::LBrace) => {},
+                None => return Err(ParseError::Eof),
+                Some(t) => return Err(ParseError::Parse(t)),
+            }
+        }
+        self.depth += 1;
+        let hit_eof = loop {
+            let key = match self.get_token()? {
+                Some(Token::RBrace) => break false,
+                None => break true,
+                Some(t) => ParserAtom::from(t),
+            };
+            match self.get_token()? {
+                Some(Token::Eq) => {},
+                Some(Token::LBrace) => {
+                    self.unget(Token::LBrace);
+                },
+                None => return Err(ParseError::Eof),
+                Some(t) => return Err(ParseError::Parse(t)),
+            }
+            self.scope.push(key.as_ref().into());
+            //println!("Parsing {}", self.scope.join("/"));
+            func(key, self)?;
+            self.scope.pop();
+        };
+        self.depth -= 1;
+        match (hit_eof, is_top) {
+            (true, true) | (false, false) => Ok(()),
+            (true, false) => Err(ParseError::Eof),
+            (false, true) => Err(ParseError::Parse(Token::RBrace)),
+        }
+    }
+
+    pub fn with_scope<F>(&mut self, mut func: F) -> Result<()>
+        where F: FnMut(&mut Self) -> Result<()>
+    {
+        match self.get_token()? {
+            Some(Token::LBrace) => {},
+            None => return Err(ParseError::Eof),
+            Some(t) => return Err(ParseError::Parse(t)),
+        }
+        self.depth += 1;
+        self.scope.push("(with_scope)".into());
+        loop {
+            match self.get_token()? {
+                Some(Token::RBrace) => break,
+                None => break,
+                Some(t) => self.unget(t),
+            };
+            func(self)?;
+        }
+        self.scope.pop();
+        self.depth -= 1;
+        Ok(())
     }
 
     pub fn get_game_data(&mut self) -> &mut crate::GameData {
@@ -244,7 +303,7 @@ impl <'a> Parser<'a> {
     }
 
     pub fn parse(mut self, result: &mut dyn ParadoxParse) -> Result<()> {
-        result.read_from(&mut self, Token::LBrace)
+        result.read(&mut self)
             .or_else(|err| {
                 eprintln!("Error at {}", self.lexer.get_location_info());
                 Err(err)
@@ -256,7 +315,7 @@ impl <'a> Parser<'a> {
         T::try_from(self, key, value)
     }
 
-    fn get_token(&mut self) -> Result<Option<Token>> {
+    pub fn get_token(&mut self) -> Result<Option<Token>> {
         if self.saved_token.is_some() {
             Ok(self.saved_token.take())
         } else {
@@ -264,67 +323,9 @@ impl <'a> Parser<'a> {
         }
     }
 
-    fn unget(&mut self, token: Token) {
+    pub fn unget(&mut self, token: Token) {
         assert!(self.saved_token.is_none(), "Can only save one token");
         self.saved_token = Some(token);
-    }
-
-    fn try_key_eq(&mut self, key: Token) -> Result<ValuePair> {
-        Ok(match self.get_token()? {
-            // EOF: it's okay if we're at top depth.
-            None if self.depth == 0 => (None, key),
-            None => return Err(ParseError::Eof),
-
-            // Eq: we are to be followed by a value.
-            Some(Token::Eq) => {
-                (Some(key.into()), match self.get_token()? {
-                    Some(t) if t.is_simple_value() => t,
-                    Some(Token::LBrace) => {
-                        self.depth += 1;
-                        Token::LBrace
-                    },
-                    None => return Err(ParseError::Eof),
-                    Some(t) => return Err(ParseError::Parse(t))
-                })
-            },
-
-            // LBrace: this happens in gamestate, and I assume an = should have
-            // been present.
-            Some(Token::LBrace) => {
-                self.depth += 1;
-                (Some(key.into()), Token::LBrace)
-            },
-
-            // For anything else, unget the character and return the
-            // value as an untyped thing.
-            Some(t) => {
-                self.unget(t);
-                (None, key)
-            }
-        })
-    }
-
-    pub fn get_next_value(&mut self) -> Result<Option<ValuePair>> {
-        match self.get_token()? {
-            None if self.depth == 0 => Ok(None),
-            None => Err(ParseError::Eof),
-            Some(Token::RBrace) if self.depth > 0 => {
-                self.depth -= 1;
-                Ok(None)
-            },
-            Some(Token::RBrace) if self.depth == 0 => {
-                eprintln!("Warning: extraneous }} at {}",
-                          self.lexer.get_location_info());
-                Ok(None)
-            },
-            Some(Token::LBrace) => {
-                self.depth += 1;
-                Ok(Some((None, Token::LBrace)))
-            },
-            Some(t) if t.is_simple_value() =>
-                self.try_key_eq(t).map(|val| Some(val)),
-            Some(t) => Err(ParseError::Parse(t))
-        }
     }
 
     pub fn validation_error(&mut self, class_name: &'static str, field: &str,
@@ -347,18 +348,16 @@ impl <'a> Parser<'a> {
         } else {
             println!("warning: {}", msg);
             if let Some(value) = value {
+                self.unget(value);
                 let mut discard = ();
-                discard.read_from(self, value)?;
+                discard.read(self)?;
             }
             Ok(())
         }
     }
-
-    pub fn drain(&mut self, value: Token) -> Result<()> {
-        let mut discard = ();
-        discard.read_from(self, value)
-    }
 }
+
+pub type ParserAtom = string_cache::DefaultAtom;
 
 /// Load an entire directory of parseable files.
 ///

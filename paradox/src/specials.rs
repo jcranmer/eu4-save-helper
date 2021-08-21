@@ -18,101 +18,71 @@ pub enum SpecialCondition<S: Condition> {
     Else(Vec<S>)
 }
 
-pub fn parse_key_pair_list<S: FromParadoxKeyPair>(parser: &mut Parser,
-        value: Token) -> Result<Vec<S>> {
-    let class_name = std::any::type_name::<Vec<S>>();
+pub fn parse_key_pair_list<S: FromParadoxKeyPair>(parser: &mut Parser
+        ) -> Result<Vec<S>> {
     let mut vec = Vec::new();
-    value.expect_complex()?;
-    while let Some((key, value)) = parser.get_next_value()? {
-        match key {
-            None => {
-                parser.validation_error(class_name, "", "bad_key", false,
-                                        Some(value))?;
-            },
-            Some(key) => {
-                let key = key.into_owned();
-                vec.push(parser.try_parse(&key, value)?);
-            },
-        }
-    }
+    parser.parse_key_scope(|key, parser| {
+        let value = parser.get_token()?.unwrap();
+        vec.push(parser.try_parse(&key, value)?);
+        Ok(())
+    })?;
     Ok(vec)
 }
 
-fn parse_if<S: Condition>(parser: &mut Parser,
-                          value: Token) -> Result<(Vec<S>, Vec<S>)> {
-    let class_name = std::any::type_name::<Vec<S>>();
+fn parse_if<S: Condition>(parser: &mut Parser) -> Result<(Vec<S>, Vec<S>)> {
     let mut vec = Vec::new();
-    value.expect_complex()?;
-    let condition = match parser.get_next_value()? {
-        Some((Some(key), value)) if key == "limit" => {
-            parse_key_pair_list::<S>(parser, value)?
-        },
-        _ => {
-            parser.validation_error("if", "", "missing limit", true, None)?;
-            Vec::new()
+    let mut condition = None;
+    parser.parse_key_scope(|key, parser| {
+        if key.as_ref() == "limit" {
+            condition = Some(parse_key_pair_list::<S>(parser)?);
+        } else {
+            let value = parser.get_token()?.unwrap();
+            vec.push(parser.try_parse(&key, value)?);
         }
-    };
-    while let Some((key, value)) = parser.get_next_value()? {
-        match key {
-            None => {
-                parser.validation_error(class_name, "", "bad_key", false,
-                                        Some(value))?;
-            },
-            Some(key) => {
-                let key = key.into_owned();
-                vec.push(parser.try_parse(&key, value)?);
-            },
-        }
-    }
-    Ok((condition, vec))
+        Ok(())
+    })?;
+    Ok((condition.unwrap(), vec))
 }
 
 fn parse_extra<S: Condition, T: ParadoxParse + Default>(parser: &mut Parser,
-        extra_key: &str, value: Token) -> Result<(Vec<S>, T)> {
-    let class_name = std::any::type_name::<Vec<S>>();
+        extra_key: &str) -> Result<(Vec<S>, T)> {
     let mut vec = Vec::new();
     let mut extra = T::default();
-    value.expect_complex()?;
-    while let Some((key, value)) = parser.get_next_value()? {
-        match key {
-            None => {
-                parser.validation_error(class_name, "", "bad_key", false,
-                                        Some(value))?;
-            },
-            Some(key) if key == extra_key => {
-                extra.read_from(parser, value)?;
-            },
-            Some(key) => {
-                let key = key.into_owned();
-                vec.push(parser.try_parse(&key, value)?);
-            },
+    parser.parse_key_scope(|key, parser| {
+        if key.as_ref() == extra_key {
+            extra.read(parser)?;
+        } else {
+            let value = parser.get_token()?.unwrap();
+            vec.push(parser.try_parse(&key, value)?);
         }
-    }
+        Ok(())
+    })?;
     Ok((vec, extra))
 }
 
 impl <S: Condition> SpecialCondition<S> {
     pub fn try_parse(parser: &mut Parser, key: &str,
                      value: Token) -> Result<Option<Self>> {
+        parser.unget(value);
         match key {
-            "NOT" => Ok(Some(Self::Not(parse_key_pair_list(parser, value)?))),
-            "AND" => Ok(Some(Self::And(parse_key_pair_list(parser, value)?))),
-            "OR" => Ok(Some(Self::Or(parse_key_pair_list(parser, value)?))),
+            "NOT" => Ok(Some(Self::Not(parse_key_pair_list(parser)?))),
+            "AND" => Ok(Some(Self::And(parse_key_pair_list(parser)?))),
+            "OR" => Ok(Some(Self::Or(parse_key_pair_list(parser)?))),
             "calc_true_if" => {
-                let (conds, count) = parse_extra(parser, "amount", value)?;
+                let (conds, count) = parse_extra(parser, "amount")?;
                 Ok(Some(Self::Many(conds, count)))
             }
             "hidden_trigger" =>
-                Ok(Some(Self::Hidden(parse_key_pair_list(parser, value)?))),
+                Ok(Some(Self::Hidden(parse_key_pair_list(parser)?))),
             "if" => {
-                let (condition, result) = parse_if(parser, value)?;
+                let (condition, result) = parse_if(parser)?;
                 Ok(Some(Self::If(condition, result)))
             },
             "else_if" => {
-                let (condition, result) = parse_if(parser, value)?;
+                let (condition, result) = parse_if(parser)?;
                 Ok(Some(Self::ElseIf(condition, result)))
             },
-            "else" => Ok(Some(Self::Else(parse_key_pair_list(parser, value)?))),
+            "else" => Ok(Some(Self::Else(parse_key_pair_list(parser)?))),
             _ => Ok(None)
         }
     }

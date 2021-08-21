@@ -71,10 +71,10 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
                 IdKey::new_via_gamedata(parser.get_game_data(), &key)
             }
         } else {
-            quote_spanned!{field.ty.span() => key.into_owned() }
+            quote_spanned!{field.ty.span() => (*key).into() }
         };
         let body = quote_spanned!{ field.span() =>
-            Some(key) => {
+            key => {
                 use std::collections::hash_map::Entry;
                 let entry = self.#name.entry(#make_key);
                 match entry {
@@ -83,7 +83,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
                             "multiple definitions found", false, None)?,
                     _ => ()
                 }
-                entry.or_default().read_from(parser, value)?;
+                entry.or_default().read(parser)?;
             },
         };
         return FieldHandler { name, body, check_name: None, is_default: true };
@@ -92,8 +92,8 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
     // This type of field sets the default body instead.
     if has_tag(field, "modifiers") {
         let body = quote_spanned!{ field.span() =>
-            Some(key) => {
-                let key = key.into_owned();
+            key => {
+                let value = parser.get_token()?.unwrap();
                 self.#name.push(parser.try_parse(&key, value)?);
             },
         };
@@ -109,7 +109,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
         Some(format_ident!("seen_{}", name))
     };
     let field_match = quote_spanned!{field.span() =>
-        Some(key) if key == #stringy_name
+        key if key.as_ref() == #stringy_name
     };
     let check_presence = if let Some(ref check_name) = check_name {
         Some(quote_spanned!{field.span() =>
@@ -132,7 +132,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
         quote_spanned!{field.span() =>
             #field_match => {
                 #check_presence
-                self.#name = paradox::parse_key_pair_list(parser, value)?;
+                self.#name = paradox::parse_key_pair_list(parser)?;
             }
         }
     } else {
@@ -154,7 +154,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
             #field_match => {
                 #check_presence
                 #get_parsee
-                parsee.read_from(parser, value)?;
+                parsee.read(parser)?;
             }
         }
     };
@@ -171,9 +171,10 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     };
 
     let mut default_body = quote! {
-        Some(key) => {
+        key => {
+            let token = parser.get_token()?;
             parser.validation_error(class_name, &key, "unknown in struct",
-                                    false, Some(value))?;
+                                    false, token)?;
         },
     };
     let mut match_statements = Vec::new();
@@ -201,22 +202,17 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
     let expanded = quote! {
         #[automatically_derived]
         impl paradox::ParadoxParse for #name {
-            fn read_from(&mut self, parser: &mut paradox::Parser,
-                         val: paradox::UnparsedValue)
+            fn read(&mut self, parser: &mut paradox::Parser)
                     -> Result<(), paradox::ParseError> {
                 let class_name = std::any::type_name::<Self>();
                 #( #prologue )*
-                val.expect_complex()?;
-                while let Some((key, value)) = parser.get_next_value()? {
+                parser.parse_key_scope(|key, parser| {
                     match key {
-                        None => {
-                            parser.validation_error(class_name, "",
-                                "bad key", false, Some(value))?;
-                        },
                         #( #match_statements, )*
                         #default_body
                     }
-                }
+                    Ok(())
+                })?;
                 #( #epilogue )*
                 Ok(())
             }
