@@ -202,3 +202,95 @@ pub fn load_savegame<T: ParadoxParse + Default>(path: &Path, game_data: &mut Gam
 
     Ok(gamestate)
 }
+
+pub fn ironmelt(in_path: &Path, out_path: &Path) -> Result<(), ParseError> {
+    use std::io::Write;
+    use zip::ZipWriter;
+    use zip::write::FileOptions;
+    let mut archive = ZipArchive::new(File::open(in_path)?)?;
+    let mut writer = ZipWriter::new(File::create(out_path)?);
+    for i in 0..archive.len() {
+        let entry = archive.by_index(i)?;
+        let name = entry.name();
+        let file_opts = FileOptions::default()
+            .compression_method(entry.compression())
+            .last_modified_time(entry.last_modified())
+            .unix_permissions(entry.unix_mode().unwrap_or(0o644));
+        writer.start_file(name, file_opts)?;
+        writeln!(writer, "EU4txt")?;
+
+        let mut lexer = get_lexer(entry, in_path)?;
+        let mut is_array = false;
+        let mut is_key = true;
+        let mut is_array_known = true;
+        let mut indent = String::new();
+        let mut saved_token = None;
+        let mut stack = Vec::new();
+        loop {
+            let token = match lexer.get_token()? {
+                Some(t) => t,
+                None => break
+            };
+            match token {
+                Token::LBrace => {
+                    assert!(saved_token.is_none(), "Fuuuckk");
+                    write!(writer, " {{")?;
+                    stack.push((is_array_known, is_array));
+                    is_array_known = false;
+                    is_array = true;
+                },
+                Token::RBrace => {
+                    if let Some(t) = saved_token.take() {
+                        write!(writer, "{}", t)?;
+                        is_array = true;
+                    }
+                    if is_array_known && !is_array {
+                        indent.pop();
+                        indent.pop();
+                    }
+                    writeln!(writer, "{}}}", if is_array { " " } else { "" })?;
+                    write!(writer, "{}", indent)?;
+                    let entry = stack.pop().unwrap();
+                    is_array_known = entry.0;
+                    is_array = entry.1;
+                    is_key = true;
+                },
+                Token::Eq => {
+                    if let Some(t) = saved_token.take() {
+                        is_array = false;
+                        is_array_known = true;
+                        indent.push_str("  ");
+                        write!(writer, "\n{}{}", indent, t)?;
+                    } else {
+                        assert!(is_array_known && !is_array, "Fuck?");
+                    }
+                    write!(writer, " =")?;
+                    is_key = false;
+                },
+                t => {
+                    let as_string = std::borrow::Cow::from(t);
+                    if is_array_known {
+                        if is_array {
+                            write!(writer, " {}", as_string)?;
+                        } else if is_key {
+                            write!(writer, "{}", as_string)?;
+                            is_key = false;
+                        } else {
+                            write!(writer, " {}\n{}", as_string, indent)?;
+                            is_key = true;
+                        }
+                    } else if let Some(t) = saved_token.take() {
+                        is_array_known = true;
+                        is_array = true;
+                        write!(writer, " {} {}", t, as_string)?;
+                    } else {
+                        saved_token = Some(as_string);
+                    }
+                },
+            }
+        }
+        assert!(saved_token.is_none(), "Not going to happen");
+    }
+    writer.finish()?;
+    Ok(())
+}

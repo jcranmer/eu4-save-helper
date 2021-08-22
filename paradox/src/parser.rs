@@ -33,7 +33,7 @@ impl From<Token> for Cow<'static, str> {
                 panic!("Shouldn't call this method if it's not a simple value"),
             Token::String(s) => s.into(),
             Token::Interned(s) => s.into(),
-            Token::Bool(b) => (if b { "yes " } else { "no" }).into(),
+            Token::Bool(b) => (if b { "yes" } else { "no" }).into(),
             Token::Fixed(f) => f.to_string().into(),
             Token::Float(f) => f.to_string().into(),
             Token::Integer(i) => i.to_string().into(),
