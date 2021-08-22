@@ -11,7 +11,7 @@ fn main() -> Result<(), paradox::ParseError> {
         &mut eu4data.base_info
         )?;
     trade::optimize_trade(&eu4data, &gamestate,
-                          gamestate.player.to_str(&eu4data.base_info));
+                          gamestate.player.as_ref());
 
     //let country_ref = eu4data.base_info.get_id_box::<eu4::Country>()
     //    .get_index("MCH").unwrap();

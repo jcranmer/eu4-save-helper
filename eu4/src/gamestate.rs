@@ -1,8 +1,8 @@
-use crate::*;
-use paradox::{Date, FixedPoint, IdRef, ParadoxParse, ParserAtom};
+use paradox::{Date, FixedPoint, ParadoxParse, ParserAtom};
 use std::collections::HashMap;
 
-type CountryRef = IdRef<crate::Country>;
+//type CountryRef = IdRef<crate::Country>;
+type CountryRef = ParserAtom;
 
 #[derive(ParadoxParse, Default)]
 pub struct Gamestate {
@@ -18,7 +18,7 @@ pub struct Gamestate {
     pub unit_template_id: i32,
     pub flags: HashMap<ParserAtom, Date>,
     pub start_date: Date,
-    pub map_area_data: HashMap<IdRef<Area>, ()>,
+    pub map_area_data: HashMap<ParserAtom, ()>,
     pub total_military_power: f64,
     pub average_military_power: f64,
     pub institution_origin: Vec<i32>, // XXX: ProvinceRef
@@ -38,7 +38,7 @@ pub struct Gamestate {
     pub hre_leagues_status: i32,
     pub hre_religion_status: i32,
     #[repeated] pub trade_league: Vec<()>,
-    pub religions: HashMap<IdRef<Religion>, ()>,
+    pub religions: HashMap<ParserAtom, ()>,
     pub religion_instance_data: HashMap<ParserAtom, ()>,
     pub fired_events: (),
     pub pending_events: (),
@@ -143,7 +143,7 @@ pub struct CountryTradeNode {
 
 #[derive(ParadoxParse, Default)]
 pub struct AppliedModifiers {
-    //pub modifier: IdRef<EventModifier>,
+    pub modifier: ParserAtom,
     pub date: Date,
     #[optional] pub hidden: bool,
 }
@@ -194,13 +194,13 @@ pub struct Country {
     #[optional] pub name: String,
     #[optional] pub adjective: String,
     pub dirty_colony: bool,
-    #[optional] pub primary_culture: IdRef<Culture>,
-    #[optional] pub dominant_culture: IdRef<Culture>,
-    #[repeated] pub accepted_culture: Vec<IdRef<Culture>>,
-    #[optional] pub religion: IdRef<Religion>,
-    #[optional] pub secondary_religion: IdRef<Religion>,
+    #[optional] pub primary_culture: ParserAtom,
+    #[optional] pub dominant_culture: ParserAtom,
+    #[repeated] pub accepted_culture: Vec<ParserAtom>,
+    #[optional] pub religion: ParserAtom,
+    #[optional] pub secondary_religion: ParserAtom,
     #[optional] pub religious_school: ParserAtom,
-    #[optional] pub dominant_religion: IdRef<Religion>,
+    #[optional] pub dominant_religion: ParserAtom,
     #[optional] pub fervor: (),
     #[optional] pub technology_group: ParserAtom,
     #[optional] pub liberty_desire: FixedPoint,
@@ -466,7 +466,7 @@ pub struct Country {
     #[optional] pub golden_era_date: Date,
     #[optional] pub diplomacy: (), // Or is this repeated?
     #[optional] pub harmonization_progress: FixedPoint,
-    #[optional] pub harmonizing_with_religion: IdRef<Religion>,
+    #[optional] pub harmonizing_with_religion: ParserAtom,
     #[optional] pub ai_condottieri_malus_until: Date,
     #[optional] pub num_of_independence_supporters: i32,
     #[optional] pub ai_condottieri_dont_send_until: (),
@@ -505,10 +505,10 @@ pub struct Province {
     #[optional] pub trade: ParserAtom, // IdRef<crate::TradeNode>,
     #[optional] pub unit: (),
     #[optional] pub spy_actions: (),
-    #[optional] pub original_culture: IdRef<Culture>,
-    #[optional] pub culture: IdRef<Culture>,
-    #[optional] pub religion: IdRef<Religion>,
-    #[optional] pub original_religion: IdRef<Religion>,
+    #[optional] pub original_culture: ParserAtom,
+    #[optional] pub culture: ParserAtom,
+    #[optional] pub religion: ParserAtom,
+    #[optional] pub original_religion: ParserAtom,
     #[optional] pub capital: String,
     #[optional] pub is_city: bool,
     #[optional] pub colonysize: FixedPoint,
@@ -574,7 +574,7 @@ pub struct Province {
     #[optional] pub latent_trade_goods: (),
     #[optional] pub active_trade_company: bool,
     #[optional] pub center_of_religion: bool,
-    #[optional] pub native_culture: IdRef<Culture>,
+    #[optional] pub native_culture: ParserAtom,
     #[optional] pub country_improve_count: (),
 }
 

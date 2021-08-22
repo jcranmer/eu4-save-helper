@@ -74,7 +74,7 @@ impl_box!(crate::CultureGroup, 7);
 impl_box!(crate::Culture, 8);
 impl_box!(crate::TradeNode, 9);
 impl_box!(crate::Climate, 10);
-impl_box!(crate::TradeGood, 11);
+impl_box!(crate::TradeGood, 11, "nogoods");
 impl_box!(crate::AdvisorType, 12);
 impl_box!(crate::ScriptedTrigger, 13);
 impl_box!(crate::IdeaGroup, 14);

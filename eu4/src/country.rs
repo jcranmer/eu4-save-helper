@@ -1,10 +1,10 @@
-use paradox::{IdKey, IdRef, ParadoxParse, ParseError, Parser};
+use paradox::{IdKey, ParadoxParse, ParseError, Parser, ParserAtom};
 use std::collections::HashMap;
 
 type ParseResult = Result<(), ParseError>;
 
 #[derive(Default)]
-pub struct CountryMap(HashMap<IdKey<Country>, Country>);
+pub struct CountryMap(HashMap<ParserAtom, Country>);
 
 impl ParadoxParse for CountryMap {
     fn read(&mut self, parser: &mut Parser) -> ParseResult {
@@ -15,7 +15,7 @@ impl ParadoxParse for CountryMap {
             let mut result : Country = Default::default();
             let data = parser.get_game_data();
             data.parse_directory(&path, &mut result)?;
-            let id = IdKey::new(data.get_id_box_mut::<Country>(), &key);
+            let id = key.clone();
             if self.0.insert(id, result).is_some() {
                 return Err(ParseError::Constraint(
                         format!("Duplicate tag {}", key)));
@@ -36,9 +36,7 @@ impl ParadoxParse for CountryMap {
         for &(start, count) in PAIRS {
             for num in 0..count {
                 let tag = format!("{}{:02}", start, num);
-                let data = parser.get_game_data();
-                let id = IdKey::new(data.get_id_box_mut::<Country>(), &tag);
-                self.0.insert(id, Default::default());
+                self.0.insert(tag.into(), Default::default());
             }
         }
         Ok(())
@@ -71,7 +69,7 @@ pub struct Area {}
 
 #[derive(ParadoxParse, Default)]
 pub struct Region {
-    #[optional] pub areas: Vec<IdRef<Area>>,
+    #[optional] pub areas: Vec<ParserAtom>,
     #[optional] pub monsoon: [(); 2]
 }
 
