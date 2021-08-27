@@ -146,6 +146,25 @@ pub struct AppliedModifiers {
     pub modifier: ParserAtom,
     pub date: Date,
     #[optional] pub hidden: bool,
+    #[optional] pub ruler_modifier: bool,
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct HreInfo {
+    pub emperor: CountryRef,
+    pub imperial_influence: FixedPoint,
+    #[repeated] pub old_emperor: Vec<()>,
+    #[repeated] pub passed_reform: Vec<ParserAtom>,
+    pub continent: u32,
+    pub imperial_ban_allowed: bool,
+    pub internal_hre_crb: bool,
+    pub hre_inheritable: bool,
+    pub allows_famle_emperor: bool,
+    pub emperor_has_revoked: bool,
+    pub electors: Vec<CountryRef>,
+    pub emperor_previous_rank: u32,
+    pub imperial_realm_war: bool,
+    #[repeated] pub previous_incident: Vec<()>,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -484,6 +503,10 @@ pub struct Country {
     #[optional] pub interactions_last_used: (),
     #[optional] pub last_sent_peace_offer_date: Date,
     #[optional] pub num_expanded_administration: i32,
+    #[optional] pub historical_council: i32,
+    #[optional] pub council_active: i32,
+    #[optional] pub pillaged_capital_state: (),
+    #[optional] pub join_hre: Date,
 }
 
 #[derive(ParadoxParse, Default)]

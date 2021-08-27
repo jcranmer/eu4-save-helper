@@ -190,6 +190,10 @@ impl <T: BoxedValue + ParadoxParse> TypeDefinition<T> {
         self.values.iter()
             .map(|(name, _)| name)
     }
+
+    pub fn get_index(&self, name: ParserAtom) -> usize {
+        *self.map.get(&name).unwrap()
+    }
 }
 
 impl <'a, T> std::ops::Index<&'a ParserAtom> for TypeDefinition<T>

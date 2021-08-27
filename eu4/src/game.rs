@@ -6,7 +6,7 @@ pub struct GameData {
     pub base_info: paradox::GameData,
 
     #[parse = "common/country_tags"]
-    tags: crate::CountryMap,
+    pub tags: crate::CountryMap,
 
     #[parse = "map/area.txt"]
     areas: HashMap<IdKey<crate::Area>, ()>,

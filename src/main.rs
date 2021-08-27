@@ -1,6 +1,11 @@
 use eu4::{GameData, Gamestate};
 mod trade;
 
+/*fn get_tier(gamedata: &GameData, gamestate: &Gamestate) {
+    // Modifiers:
+    let country_id = gamedata.tags.get_index("BRB".into());
+}*/
+
 fn main() -> Result<(), paradox::ParseError> {
     let mut eu4data = eu4::GameData::new(
         &paradox::get_default_steam_dir().join("Europa Universalis IV"))?;
