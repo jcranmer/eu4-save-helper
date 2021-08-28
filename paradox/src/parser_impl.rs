@@ -154,6 +154,17 @@ impl <T: ParadoxParse + Default> ParadoxParse for Vec<T> {
     }
 }
 
+impl <T: ParadoxParse + Default> ParadoxParse for Vec<(ParserAtom, T)> {
+    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        parser.parse_key_scope(|key, parser| {
+            let mut value = T::default();
+            value.read(parser)?;
+            self.push((key, value));
+            Ok(())
+        })
+    }
+}
+
 impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
     fn read(&mut self, parser: &mut Parser) -> ParseResult {
         parser.parse_key_scope(|key, parser| {
@@ -174,8 +185,9 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<ParserAtom, T> {
             let mut val = T::default();
             val.read(parser)?;
             if self.insert(key.clone(), val).is_some() {
-                return Err(ParseError::Constraint(
-                        format!("Duplicate key {} in map", key)));
+                // Some maps have duplicate keys!
+                //return Err(ParseError::Constraint(
+                //        format!("Duplicate key {} in map", key)));
             }
             Ok(())
         })

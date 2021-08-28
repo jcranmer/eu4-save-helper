@@ -14,7 +14,9 @@ impl FixedPoint {
 
 impl fmt::Display for FixedPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}.{:03}", self.0 / 1000, self.0 % 1000)
+        let sign = if self.0 < 0 { "-" } else { "" };
+        let val = self.0.abs();
+        write!(f, "{}{}.{:03}", sign, val / 1000, val % 1000)
     }
 }
 
@@ -128,15 +130,27 @@ pub enum ParseFixedPointError {
 impl std::str::FromStr for FixedPoint {
     type Err = ParseFixedPointError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
         let too_few = Self::Err::Format;
+        let negation = if &s[0..1] == "-" {
+            s = &s[1..];
+            -1
+        } else {
+            1
+        };
         let mut pieces = s.split(".");
         let integer : i32 = pieces.next().ok_or(too_few)?.parse()?;
-        let fract : i32 = pieces.next().unwrap_or("0").parse()?;
+        let fract_str = pieces.next().unwrap_or("0");
+        let fract = match fract_str.len() {
+            1 => fract_str.parse::<i32>()? * 100,
+            2 => fract_str.parse::<i32>()? * 10,
+            3 => fract_str.parse::<i32>()?,
+            _ => fract_str[0..3].parse::<i32>()?
+        };
         if fract > 1000 || fract < 0 {
             return Err(Self::Err::Format);
         }
-        Ok(Self(integer * 1000 + fract))
+        Ok(Self(negation * (integer * 1000 + fract)))
     }
 }
 

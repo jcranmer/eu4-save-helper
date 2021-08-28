@@ -1,8 +1,9 @@
 use eu4::{GameData, Gamestate};
-use paradox::FixedPoint;
+use paradox::{FixedPoint, ParserAtom};
 use petgraph::graph::{EdgeIndex, Graph, NodeIndex};
 use petgraph::visit::{EdgeRef, Topo, Walker};
 use petgraph::Direction::Outgoing;
+use std::collections::HashMap;
 
 // Trade steering notes:
 // This isn't saved in the save file anywhere, it looks like, has to be
@@ -18,6 +19,8 @@ struct SimpleTradeNode {
     collecting_trade_power: FixedPoint,
     transfer_trade_power: FixedPoint,
     our_trade_power: FixedPoint,
+    our_steer_modifier: FixedPoint,
+    has_steering: bool,
 }
 
 impl SimpleTradeNode {
@@ -73,6 +76,18 @@ impl TradeNetwork {
             }
         }
 
+        // Cache for getting modifier information from a country.
+        let mut modifier_cache = HashMap::new();
+        let mut get_trade_steering = |country: &ParserAtom| {
+            let modifiers = modifier_cache.entry(country.clone())
+                .or_insert_with(|| {
+                    gamestate.countries[country]
+                        .get_modifiers(data, gamestate, &country)
+                });
+            modifiers[&ParserAtom::from("trade_steering")]
+                .as_fixed_point() + FixedPoint::ONE
+        };
+
         // Initialize node information from gamestate.
         let mut merchant_collects = Vec::with_capacity(4);
         let mut merchant_steers = Vec::with_capacity(16);
@@ -92,24 +107,30 @@ impl TradeNetwork {
             println!("  steer_power: {:?}", gs_node.steer_power);
             println!("  collector_power: {}", gs_node.collector_power);
             println!("  pull_power: {}", gs_node.pull_power);
+            let mut total_trade_steer = FixedPoint::ZERO;
             for (tag, country_trade) in &gs_node.country_info {
-                if country_trade.val == Default::default() { continue; }
+                let trade_power = country_trade.val + country_trade.t_in -
+                    country_trade.t_out;
+                if trade_power == FixedPoint::ZERO { continue; }
                 let merchant_type = country_trade.r#type;
                 let steering = country_trade.has_trader &&
                     merchant_type == 1;
                 let collecting = country_trade.has_capital ||
                     (country_trade.has_trader && merchant_type == 0);
 
+                // Calculate steering power
                 if steering {
                     let steer_direction = country_trade.steer_power as usize;
                     let edge_idx = graph.edges(tn_idx)
                         .nth(steer_direction)
                         .unwrap().id();
-                    // XXX: Weight by trade steering? How do I find this?
-                    graph[edge_idx].trade_power_pushing =
-                        country_trade.val;
+                    let steer_modifier = get_trade_steering(tag);
+                    let trade_steer = trade_power * steer_modifier;
+                    graph[edge_idx].trade_power_pushing += trade_steer;
+                    total_trade_steer += trade_steer;
                     if tag == us {
                         merchant_steers.push(edge_idx);
+                        graph[tn_idx].our_steer_modifier = steer_modifier;
                     }
                 }
 
@@ -117,17 +138,29 @@ impl TradeNetwork {
                     if collecting {
                         merchant_collects.push(tn_idx);
                     }
-                    graph[tn_idx].our_trade_power = country_trade.val;
+                    graph[tn_idx].our_trade_power = trade_power;
                 }
-                println!("  {} power: {}", tag, country_trade.val);
             }
 
-            // XXX this gets us past the trade steering issue.
+            let has_steering = total_trade_steer != FixedPoint::ZERO;
+            graph[tn_idx].has_steering = has_steering;
+
+            // Get the game's trade steering fraction. We'll only use it when
+            // there's nobody steering, but make sure our notes are correct in
+            // case there's a trade steering bonus we've missed somewhere.
             let edge_idx : Vec<_> = graph.edges(tn_idx)
                 .map(|e| e.id())
                 .collect();
             for (&e, &i) in edge_idx.iter().zip(gs_node.steer_power.iter()) {
-                graph[e].trade_power_pushing = i;
+                if !has_steering {
+                    graph[e].trade_power_pushing = i;
+                } else {
+                    let calculated =
+                        graph[e].trade_power_pushing / total_trade_steer;
+                    if calculated != i {
+                        println!("Calculated {}, actual {}", calculated, i);
+                    }
+                };
             }
 
             // Compute total trade steering bonus from the incoming links
@@ -219,11 +252,16 @@ impl TradeNetwork {
 
     fn derivative(&self, node_idx: NodeIndex, trade_values: &[FixedPoint],
                   trade_fractions: &[f64]) -> f64 {
+        // Notes for how we take the derivative of trade value wrt a trade node:
+        // TV_i = TV_i * (collect fraction + PF_i * Sum(SF_j * TF_j))
+        // TV_i' = TV_i * (collect fraction' + PF_i' * Sum(SF_j * TF_j)
+        //                                   + PF_i * Sum(SF_j' * TF_j))
         let node = &self.graph[node_idx];
         let we_steer = self.get_steer_direction(node_idx);
 
         let push_fraction = f64::from(node.push_fraction());
-        let tot_squared = f64::from(node.total_trade_power() * node.total_trade_power());
+        let tot_squared = f64::from(node.total_trade_power()) *
+            f64::from(node.total_trade_power());
         let push_derivative = if self.is_collecting(node_idx) {
             f64::from(-node.transfer_trade_power) / tot_squared
         } else {
@@ -242,7 +280,8 @@ impl TradeNetwork {
             } else {
                 // No merchant steering.
                 Default::default()
-            }) / f64::from(all_steering * all_steering);
+            }) * f64::from(self.graph[node_idx].our_steer_modifier)
+               / f64::from(all_steering * all_steering);
 
             (
                 push_fraction * steer_derivative +

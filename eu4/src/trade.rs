@@ -1,7 +1,6 @@
 use crate::{
-    CountryModifier,
+    Modifiers,
     ProvinceCondition,
-    ProvinceModifier,
     ProvinceRef,
     RgbColor
 };
@@ -33,8 +32,8 @@ pub struct TradeEdge {
 #[derive(ParadoxParse, Default, Debug)]
 pub struct TradeGood {
     color: [paradox::FixedPoint; 3],
-    #[optional] modifier: Vec<CountryModifier>,
-    #[optional] province: Vec<ProvinceModifier>,
+    #[optional] modifier: Modifiers,
+    #[optional] province: Modifiers,
     #[optional] is_latent: bool,
     #[optional] is_valuable: bool,
     #[optional] rnw_latent_chance: u32,

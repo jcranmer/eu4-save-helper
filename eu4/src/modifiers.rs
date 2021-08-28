@@ -1,6 +1,6 @@
-use paradox::{FixedPoint, ParadoxParse};
+use paradox::{FixedPoint, ParadoxParse, Parser, ParserAtom, ParseError};
 
-paradox::modifier_list! {
+/*paradox::modifier_list! {
     modifier(Country, army_tradition, FixedPoint);
     modifier(Country, army_tradition_decay, FixedPoint);
     modifier(Country, army_tradition_from_battle, FixedPoint);
@@ -450,10 +450,7 @@ paradox::modifier_list! {
     modifier(Province, allowed_num_of_manufactories, i32);
     modifier(Province, local_governing_cost_increase, i32);
     modifier(Province, state_governing_cost_increase, i32);
-}
-
-pub type CountryModifier = Modifier;
-pub type ProvinceModifier = Modifier;
+}*/
 
 #[derive(ParadoxParse, Default)]
 pub struct EventModifier {
@@ -467,5 +464,130 @@ pub struct EventModifier {
     #[optional] pub is_mercenary_modifier: bool,
     #[optional] pub is_revolutionary_guard_modifier: bool,
     #[optional] pub is_rajput_modifier: bool,
-    #[modifiers] pub modifiers: Vec<Modifier>
+    #[modifiers] pub modifiers: Modifiers,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum ModifierValue {
+    Bool(bool),
+    Integer(i32),
+    FixedPoint(FixedPoint)
+}
+
+impl ModifierValue {
+    pub fn as_fixed_point(self) -> FixedPoint {
+        match self {
+            Self::Bool(true) => FixedPoint::ONE,
+            Self::Bool(false) => FixedPoint::ZERO,
+            Self::Integer(i) => i.into(),
+            Self::FixedPoint(f) => f
+        }
+    }
+}
+
+impl Default for ModifierValue {
+    fn default() -> Self {
+        Self::Bool(false)
+    }
+}
+
+impl core::ops::Add for ModifierValue {
+    type Output = ModifierValue;
+    fn add(self, other: ModifierValue) -> ModifierValue {
+        match (self, other) {
+            (Self::Bool(a), Self::Bool(b)) => Self::Bool(a | b),
+            (Self::Integer(a), Self::Integer(b)) => Self::Integer(a + b),
+            (Self::FixedPoint(a), Self::FixedPoint(b)) =>
+                Self::FixedPoint(a + b),
+            (Self::Integer(a), Self::FixedPoint(b)) =>
+                Self::FixedPoint(FixedPoint::from(a) + b),
+            (Self::FixedPoint(a), Self::Integer(b)) =>
+                Self::FixedPoint(a + FixedPoint::from(b)),
+            (Self::Bool(false), t) => t,
+            (a, b) => panic!("Cannot combine {:?} with {:?}", a, b)
+        }
+    }
+}
+
+impl core::ops::Mul<FixedPoint> for ModifierValue {
+    type Output = ModifierValue;
+    fn mul(self, scale: FixedPoint) -> ModifierValue {
+        match self {
+            Self::Bool(a) => Self::Bool(a),
+            Self::Integer(a) => Self::FixedPoint(FixedPoint::from(a) * scale),
+            Self::FixedPoint(a) => Self::FixedPoint(a * scale)
+        }
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct Modifiers {
+    pub modifiers: Vec<(ParserAtom, ModifierValue)>,
+}
+
+impl Modifiers {
+    pub fn read_field(&mut self, key: ParserAtom,
+                      parser: &mut Parser) -> Result<(), ParseError> {
+        let value = parser.get_token()?.ok_or(ParseError::Eof)?;
+        let str_value = value.try_to_string()?;
+        let value = if str_value == "yes" {
+            ModifierValue::Bool(true)
+        } else if str_value == "no" {
+            ModifierValue::Bool(false)
+        } else {
+            ModifierValue::FixedPoint(
+                str_value.parse()
+                    .map_err(|e| ParseError::Conversion(Box::new(e)))?
+            )
+        };
+        self[&key] = value;
+        Ok(())
+    }
+
+    pub fn add_modifiers(&mut self, other: &Modifiers) -> &mut Self {
+        for (key, value) in &other.modifiers {
+            let our_mod = &mut self[key];
+            *our_mod = *our_mod + *value;
+        }
+        self
+    }
+
+    pub fn add_scaled_modifiers(&mut self, other: &Modifiers,
+                                scale: FixedPoint) -> &mut Self {
+        for (key, value) in &other.modifiers {
+            let our_mod = &mut self[key];
+            *our_mod = *our_mod + (*value * scale);
+        }
+        self
+    }
+}
+
+impl core::ops::Index<&'_ ParserAtom> for Modifiers {
+    type Output = ModifierValue;
+    fn index(&self, idx: &ParserAtom) -> &ModifierValue {
+        static DUMMY_VAL : ModifierValue = ModifierValue::Bool(false);
+        self.modifiers.binary_search_by_key(idx, |(k, _)| k.clone())
+            .map(|idx| &self.modifiers[idx].1)
+            .unwrap_or(&DUMMY_VAL)
+    }
+}
+
+impl core::ops::IndexMut<&'_ ParserAtom> for Modifiers {
+    fn index_mut(&mut self, key: &ParserAtom) -> &mut ModifierValue {
+        match self.modifiers.binary_search_by_key(key, |(k, _)| k.clone()) {
+            Ok(idx) => &mut self.modifiers[idx].1,
+            Err(idx) => {
+                self.modifiers.insert(idx, (key.clone(), Default::default()));
+                &mut self.modifiers[idx].1
+            }
+        }
+    }
+}
+
+impl ParadoxParse for Modifiers {
+    fn read(&mut self, parser: &mut Parser) -> Result<(), ParseError> {
+        parser.parse_key_scope(|key, parser| {
+            self.read_field(key, parser)
+        })
+    }
 }

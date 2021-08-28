@@ -44,15 +44,6 @@ fn has_tag(field: &Field, tag: &'static str) -> bool {
         .any(|attr| attr.path.is_ident(tag))
 }
 
-fn get_tag(field: &Field, tag: &'static str) -> Option<TokenStream> {
-    field.attrs.iter()
-        .find_map(|attr| if attr.path.is_ident(tag) {
-            Some(attr.tokens.clone())
-        } else {
-            None
-        })
-}
-
 fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
     let name = &field.ident.as_ref().expect("unnamed field?");
     let stringy_name = stringify(name);
@@ -73,28 +64,47 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
         } else {
             quote_spanned!{field.ty.span() => (*key).into() }
         };
-        let body = quote_spanned!{ field.span() =>
-            key => {
-                use std::collections::hash_map::Entry;
-                let entry = self.#name.entry(#make_key);
-                match entry {
-                    Entry::Occupied(ref e) =>
-                        parser.validation_error(class_name, &format!("{:?}", e.key()),
-                            "multiple definitions found", false, None)?,
-                    _ => ()
+        let body = if ty.contains("HashMap") {
+            quote_spanned!{ field.span() =>
+                key => {
+                    use std::collections::hash_map::Entry;
+                    let entry = self.#name.entry(#make_key);
+                    match entry {
+                        Entry::Occupied(ref e) =>
+                            parser.validation_error(class_name, &format!("{:?}", e.key()),
+                                "multiple definitions found", false, None)?,
+                        _ => ()
+                    }
+                    entry.or_default().read(parser)?;
+                },
+            }
+        } else {
+            quote_spanned!{ field.span() =>
+                key => {
+                    self.#name.push((#make_key, Default::default()));
+                    self.#name.last_mut().unwrap()
+                        .1.read(parser)?;
                 }
-                entry.or_default().read(parser)?;
-            },
+            }
         };
         return FieldHandler { name, body, check_name: None, is_default: true };
     }
 
     // This type of field sets the default body instead.
     if has_tag(field, "modifiers") {
+        if ty.contains("Vec") {
+            // LEGACY
+            let body = quote_spanned!{ field.span() =>
+                key => {
+                    let value = parser.get_token()?.unwrap();
+                    self.#name.push(parser.try_parse(&key, value)?);
+                },
+            };
+            return FieldHandler { name, body, check_name: None, is_default: true };
+        }
         let body = quote_spanned!{ field.span() =>
             key => {
-                let value = parser.get_token()?.unwrap();
-                self.#name.push(parser.try_parse(&key, value)?);
+                self.#name.read_field(key, parser)?;
             },
         };
         return FieldHandler { name, body, check_name: None, is_default: true };

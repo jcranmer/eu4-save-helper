@@ -1,26 +1,38 @@
-use crate::{CountryCondition, CountryModifier, Weight};
-use paradox::{ParadoxParse, ParseError, Parser};
-use std::collections::HashMap;
+use crate::{Modifiers, Weight};
+use paradox::{ParadoxParse, ParserAtom};
 
 #[derive(ParadoxParse, Default)]
 pub struct IdeaGroup {
-    #[optional] pub start: Vec<CountryModifier>,
-    pub bonus: Vec<CountryModifier>,
+    #[optional] pub start: Modifiers,
+    pub bonus: Modifiers,
     #[optional] pub trigger: (),
     #[optional] pub free: bool,
     #[optional] pub ai_will_do: Weight,
     #[optional] pub important: bool,
-    #[optional] pub category: String,
+    #[optional] pub category: ParserAtom,
 
-    #[collect] pub ideas: HashMap<String, Idea>
+    #[collect] pub ideas: Vec<(ParserAtom, Modifiers)>
 }
 
-#[derive(Default)]
-pub struct Idea(Vec<CountryModifier>);
-
-impl ParadoxParse for Idea {
-    fn read(&mut self, parser: &mut Parser) -> Result<(), ParseError> {
-        self.0 = paradox::parse_key_pair_list(parser)?;
-        Ok(())
+impl IdeaGroup {
+    pub fn add_idea_modifiers(&self, count: i32, modifiers: &mut Modifiers) {
+        modifiers.add_modifiers(&self.start);
+        let count = std::cmp::min(count as usize, self.ideas.len());
+        for (_, value) in &self.ideas[0..count] {
+            modifiers.add_modifiers(value);
+        }
+        if count == self.ideas.len() {
+            modifiers.add_modifiers(&self.bonus);
+        }
     }
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct Policy {
+    monarch_power: ParserAtom,
+    potential: (), // Condition
+    allow: (), // Condition
+    ai_will_do: Weight,
+
+    #[modifiers] pub modifiers: Modifiers,
 }

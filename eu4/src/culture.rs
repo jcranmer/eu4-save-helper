@@ -1,4 +1,4 @@
-use crate::{Country, CountryModifier, ProvinceModifier};
+use crate::{Country, Modifiers};
 use paradox::{IdKey, ParadoxParse, ParserAtom};
 use std::collections::HashMap;
 
@@ -25,6 +25,6 @@ pub struct Culture {
     #[optional] pub male_names: Vec<String>,
     #[optional] pub primary: ParserAtom,
     
-    #[optional] pub country: Vec<CountryModifier>,
-    #[optional] pub province: Vec<ProvinceModifier>
+    #[optional] pub country: Modifiers,
+    #[optional] pub province: Modifiers,
 }

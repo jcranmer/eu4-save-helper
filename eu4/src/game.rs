@@ -1,4 +1,4 @@
-use paradox::{BoxedValue, IdKey, TypeDefinition};
+use paradox::{BoxedValue, IdKey, ParserAtom, TypeDefinition};
 use std::collections::HashMap;
 
 #[derive(paradox::GameData)]
@@ -30,7 +30,10 @@ pub struct GameData {
     religions: crate::ReligionList,
 
     #[parse = "common/ideas"]
-    idea_groups: TypeDefinition<crate::IdeaGroup>,
+    pub idea_groups: TypeDefinition<crate::IdeaGroup>,
+
+    #[parse = "common/policies"]
+    pub policies: TypeDefinition<crate::Policy>,
 
     #[parse = "common/advisortypes"]
     advisors: TypeDefinition<crate::AdvisorType>,
@@ -45,10 +48,10 @@ pub struct GameData {
     //scripted_triggers: HashMap<IdKey<crate::ScriptedTrigger>, crate::ScriptedTrigger>,
 
     #[parse = "common/static_modifiers"]
-    pub static_modifiers: HashMap<IdKey<crate::EventModifier>, crate::EventModifier>,
+    pub static_modifiers: HashMap<ParserAtom, crate::EventModifier>,
 
     #[parse = "common/event_modifiers"]
-    pub event_modifiers: HashMap<IdKey<crate::EventModifier>, crate::EventModifier>,
+    pub event_modifiers: HashMap<ParserAtom, crate::EventModifier>,
 
     //#[parse = "events"]
     //events: crate::EventList,
@@ -79,3 +82,4 @@ impl_box!(crate::AdvisorType, 12);
 impl_box!(crate::ScriptedTrigger, 13);
 impl_box!(crate::IdeaGroup, 14);
 impl_box!(crate::EventModifier, 15);
+impl_box!(crate::Policy, 16);

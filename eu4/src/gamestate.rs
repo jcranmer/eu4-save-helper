@@ -1,3 +1,4 @@
+use crate::{GameData, Modifiers};
 use paradox::{Date, FixedPoint, ParadoxParse, ParserAtom};
 use std::collections::HashMap;
 
@@ -37,7 +38,7 @@ pub struct Gamestate {
     pub celestial_empire: (),
     pub hre_leagues_status: i32,
     pub hre_religion_status: i32,
-    #[repeated] pub trade_league: Vec<()>,
+    #[repeated] pub trade_league: Vec<TradeLeague>,
     pub religions: HashMap<ParserAtom, ()>,
     pub religion_instance_data: HashMap<ParserAtom, ()>,
     pub fired_events: (),
@@ -104,7 +105,7 @@ pub struct TradeNode {
     #[optional] pub top_power_values: Vec<FixedPoint>,
     #[optional] pub trade_company_region: bool,
     pub most_recent_treasure_ship_passage: Date,
-    #[collect] pub country_info: HashMap<ParserAtom, CountryTradeNode>,
+    #[collect] pub country_info: Vec<(ParserAtom, CountryTradeNode)>,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -147,6 +148,12 @@ pub struct AppliedModifiers {
     pub date: Date,
     #[optional] pub hidden: bool,
     #[optional] pub ruler_modifier: bool,
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct ActivePolicy {
+    pub policy: ParserAtom,
+    pub date: Date,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -495,7 +502,7 @@ pub struct Country {
     #[optional] pub update_supply_range: bool,
     #[optional] pub absolutism: FixedPoint,
     #[optional] pub has_circumnavigated_world: bool,
-    #[optional] pub active_policy: (),
+    #[repeated] pub active_policy: Vec<ActivePolicy>,
     #[optional] pub mercenary_company: (),
     #[optional] pub used_governing_capacity: FixedPoint,
     #[optional] pub hre_vote: i32,
@@ -507,6 +514,101 @@ pub struct Country {
     #[optional] pub council_active: i32,
     #[optional] pub pillaged_capital_state: (),
     #[optional] pub join_hre: Date,
+}
+
+impl Country {
+    pub fn get_modifiers(&self, data: &GameData,
+                         gamestate: &Gamestate, tag: &ParserAtom) -> Modifiers {
+        let mut mods = Modifiers::default();
+        // Static modifiers
+        let static_mod = &data.static_modifiers;
+        // XXX: patriarch_authority_global
+        // XXX: war_taxes
+        // XXX: privateering
+        // XXX: positive_mandate, negative_mandate
+        // XXX: bankruptcy
+        // XXX: war, peace, unconditional_surrender, call_for_peace
+        macro_rules! apply_static {
+            ($label:ident) => {
+                let atom = ParserAtom::from(stringify!($label));
+                let modifier = &static_mod[&atom].modifiers;
+                mods.add_modifiers(modifier);
+            };
+            (scaled $label:ident) => {
+                let atom = ParserAtom::from(stringify!($label));
+                let modifier = &static_mod[&atom].modifiers;
+                mods.add_scaled_modifiers(modifier, self.$label);
+            };
+            (scaled 100 $label:ident) => {
+                let atom = ParserAtom::from(stringify!($label));
+                let modifier = &static_mod[&atom].modifiers;
+                mods.add_scaled_modifiers(modifier, self.$label / 100.into());
+            };
+            (+/- $label:ident) => {
+                let value = self.$label;
+                let (atom, scale) = if value < FixedPoint::ZERO {
+                    (ParserAtom::from(concat!("negative_", stringify!($label))),
+                        -value)
+                } else {
+                    (ParserAtom::from(concat!("positive_", stringify!($label))),
+                        value)
+                };
+                let modifier = &static_mod[&atom].modifiers;
+                mods.add_scaled_modifiers(modifier, scale);
+            }
+        }
+        mods.add_modifiers(&static_mod[&ParserAtom::from("base_values")].modifiers);
+        apply_static!(scaled stability);
+        apply_static!(+/- stability);
+        apply_static!(scaled inflation);
+        apply_static!(scaled war_exhaustion);
+        apply_static!(scaled 100 doom);
+        apply_static!(scaled 100 authority);
+        apply_static!(+/- piety);
+        apply_static!(scaled 100 army_tradition);
+        apply_static!(scaled 100 navy_tradition);
+        apply_static!(scaled 100 innovativeness);
+
+        // More complex static modifiers
+        for trade_league in &gamestate.trade_league {
+            if &trade_league.members[0] == tag {
+                mods.add_scaled_modifiers(
+                    &static_mod[&ParserAtom::from("scaled_trade_league_leader")].modifiers,
+                    (trade_league.members.len() as i32).into());
+            }
+            if trade_league.members.contains(tag) {
+                apply_static!(in_trade_league);
+                break;
+            }
+        }
+
+        // XXX: more static modifiers
+        for (idea_group_name, &idea_count) in &self.active_idea_groups {
+            data.idea_groups[idea_group_name]
+                .add_idea_modifiers(idea_count, &mut mods);
+        }
+        // XXX: techs
+        // XXX: religion (+ancestors, cults, etc.)
+        for modifier in &self.modifier {
+            for map in &[&data.event_modifiers, &data.static_modifiers] {
+                if let Some(val) = map.get(&modifier.modifier) {
+                    mods.add_modifiers(&val.modifiers);
+                    break;
+                }
+            }
+        }
+        for policy in &self.active_policy {
+            mods.add_modifiers(&data.policies[&policy.policy].modifiers);
+        }
+        // XXX: tradegoods
+        // XXX: advisors
+        // XXX: government rank, government reforms
+        // XXX: monarch whatevers
+        // XXX: naval doctrine
+        // XXX: great projects
+        // XXX: estates
+        mods
+    }
 }
 
 #[derive(ParadoxParse, Default)]
@@ -599,6 +701,12 @@ pub struct Province {
     #[optional] pub center_of_religion: bool,
     #[optional] pub native_culture: ParserAtom,
     #[optional] pub country_improve_count: (),
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct TradeLeague {
+    id: i32,
+    members: Vec<CountryRef>
 }
 
 #[derive(ParadoxParse, Default)]
