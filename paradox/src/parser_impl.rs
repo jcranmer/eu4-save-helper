@@ -1,4 +1,4 @@
-use crate::{BoxedValue, Date, FixedPoint, IdKey, IdRef, Token};
+use crate::{Date, FixedPoint, Token};
 use crate::parser::*;
 use std::collections::HashMap;
 use std::error::Error as StdError;
@@ -189,44 +189,6 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<ParserAtom, T> {
                 // Some maps have duplicate keys!
                 //return Err(ParseError::Constraint(
                 //        format!("Duplicate key {} in map", key)));
-            }
-            Ok(())
-        })
-    }
-}
-
-impl <I, T: ParadoxParse + Default> ParadoxParse for HashMap<IdKey<I>, T>
-    where I: BoxedValue, IdKey<I> : Eq + std::hash::Hash
-{
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
-        parser.parse_key_scope(|key, parser| {
-            let mut val = T::default();
-            val.read(parser)?;
-            let id = IdKey::new(
-                parser.get_game_data().get_id_box_mut::<I>(), &key);
-            if self.insert(id, val).is_some() {
-                // Some maps have duplicate keys!
-                //return Err(ParseError::Constraint(
-                //    format!("Duplicate key {} in map", key)));
-            }
-            Ok(())
-        })
-    }
-}
-
-impl <I, T: ParadoxParse + Default> ParadoxParse for HashMap<IdRef<I>, T>
-    where I: BoxedValue, IdRef<I>: Default
-{
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
-        parser.parse_key_scope(|key, parser| {
-            let mut id: IdRef<I> = Default::default();
-            parser.unget(Token::String(key.as_ref().into()));
-            id.read(parser)?;
-            let mut val = T::default();
-            val.read(parser)?;
-            if self.insert(id, val).is_some() {
-                return Err(ParseError::Constraint(
-                        format!("Duplicate key {} in map", key)));
             }
             Ok(())
         })

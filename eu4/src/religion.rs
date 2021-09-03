@@ -1,9 +1,9 @@
-use crate::{LocalizationKey, ProvinceRef, RgbColor};
+use crate::{Eu4Atom, LocalizationKey, ProvinceRef, RgbColor};
 use crate::modifiers::Modifiers;
-use paradox::{Date, IdKey, ParadoxParse};
+use paradox::{Date, ParadoxParse};
 use std::collections::HashMap;
 
-pub type ReligionList = HashMap<String, ReligiousGroup>;
+pub type ReligionList = HashMap<Eu4Atom, ReligiousGroup>;
 
 #[derive(ParadoxParse, Default, Debug)]
 pub struct ReligiousGroup {
@@ -26,10 +26,10 @@ pub struct ReligiousGroup {
     #[optional]
     pub harmonized_modifier: String, // XXX: EventModifier
     #[optional]
-    pub religious_schools: HashMap<String, ReligiousSchool>,
+    pub religious_schools: HashMap<Eu4Atom, ReligiousSchool>,
 
     #[collect]
-    pub religions: HashMap<IdKey<Religion>, Religion>
+    pub religions: HashMap<Eu4Atom, Religion>
 }
 
 #[derive(ParadoxParse, Default, Debug)]
@@ -44,7 +44,7 @@ pub struct Religion {
     pub flag_emblem_index_range: [u32; 2],
 
     #[optional]
-    pub allowed_conversion: Vec<String>, // XXX: ReligionRef
+    pub allowed_conversion: Vec<Eu4Atom>, // XXX: ReligionRef
 
     #[optional]
     pub harmonized_modifier: String, // XXX: EventModifier

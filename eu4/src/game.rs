@@ -1,5 +1,5 @@
 use crate::Eu4Atom;
-use paradox::{BoxedValue, IdKey, TypeDefinition};
+use paradox::{BoxedValue, TypeDefinition};
 use std::collections::HashMap;
 
 #[derive(paradox::GameData)]
@@ -10,16 +10,16 @@ pub struct GameData {
     pub tags: crate::CountryMap,
 
     #[parse = "map/area.txt"]
-    areas: HashMap<IdKey<crate::Area>, ()>,
+    areas: HashMap<Eu4Atom, ()>,
 
     #[parse = "map/region.txt"]
     regions: TypeDefinition<crate::Region>,
 
     //#[parse = "map/superregion.txt"]
-    //superregions: HashMap<IdKey<crate::Superregion>, Vec<IdRef<crate::Region>>>,
+    //superregions: HashMap<Eu4Atom, Vec<IdRef<crate::Region>>>,
 
     #[parse = "map/continent.txt"]
-    continents: HashMap<IdKey<crate::Continent>, Vec<u32>>,
+    continents: HashMap<Eu4Atom, Vec<u32>>,
 
     #[parse = "map/climate.txt"]
     climates: crate::ClimateList,

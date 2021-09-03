@@ -1,5 +1,5 @@
 use crate::Eu4Atom;
-use paradox::{IdKey, ParadoxParse, ParseError, Parser};
+use paradox::{ParadoxParse, ParseError, Parser};
 use std::collections::HashMap;
 
 type ParseResult = Result<(), ParseError>;
@@ -88,5 +88,5 @@ pub struct ClimateList {
     pub equator_y_on_province_image: u32,
 
     #[collect]
-    pub climates: HashMap<IdKey<Climate>, Vec<u32>>,
+    pub climates: HashMap<Eu4Atom, Vec<u32>>, // Key for Climate
 }

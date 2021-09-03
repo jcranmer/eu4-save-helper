@@ -1,9 +1,7 @@
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::io::{Error, ErrorKind};
-use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
-use crate::{IdBox, ParadoxParse, ParseError, Parser, ParserAtom};
+use crate::{ParadoxParse, ParseError, Parser, ParserAtom};
 
 type Result<T> = std::result::Result<T, ParseError>;
 
@@ -13,7 +11,6 @@ type Result<T> = std::result::Result<T, ParseError>;
 /// exposed by crates deriving GameData (which uses this struct internally).
 pub struct GameData {
     game_directory: PathBuf,
-    id_boxes: Vec<IdBox>
 }
 
 impl GameData {
@@ -26,8 +23,7 @@ impl GameData {
         }
 
         Ok(GameData {
-            game_directory: game_dir.to_path_buf(),
-            id_boxes: Vec::new()
+            game_directory: game_dir.to_path_buf()
         })
     }
 
@@ -37,146 +33,11 @@ impl GameData {
         crate::load_directory(&self.game_directory.join(path), target, self)?;
         Ok(self)
     }
-
-    pub fn get_id_box_mut<T: BoxedValue>(&mut self) -> &mut IdBox {
-        let index = T::TYPE_VALUE.try_into().unwrap();
-        while self.id_boxes.len() <= index {
-            self.id_boxes.push(IdBox::new());
-        }
-        &mut self.id_boxes[index]
-    }
-
-    pub fn get_id_box<T: BoxedValue>(&self) -> &IdBox {
-        let index : usize = T::TYPE_VALUE.try_into().unwrap();
-        if index >= self.id_boxes.len() {
-            panic!("Cannot call this method without setting up all boxes!");
-        }
-        &self.id_boxes[index]
-    }
 }
 
 pub trait BoxedValue: Default {
     const TYPE_VALUE: u32;
     const DEFAULT_STRING: &'static str = "";
-}
-
-#[derive(Ord, PartialOrd, Copy, Clone)]
-pub struct IdKey<T: BoxedValue> {
-    pub index: u32,
-    _data: PhantomData<T>
-}
-
-impl <T: BoxedValue> std::fmt::Debug for IdKey<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let class_name = std::any::type_name::<T>();
-        let simple = class_name.split("::").last().unwrap();
-        write!(f, "{}Key({})", simple, self.index)
-    }
-}
-
-impl <T: BoxedValue> std::hash::Hash for IdKey<T> {
-    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
-        self.index.hash(hasher);
-    }
-}
-
-impl <T: BoxedValue> PartialEq for IdKey<T> {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.index == rhs.index
-    }
-}
-
-impl <T: BoxedValue> Eq for IdKey<T> { }
-
-impl <T: BoxedValue> IdKey<T> {
-    pub fn new(id_box: &mut IdBox, string: &str) -> Self {
-        Self {
-            index: id_box.add_string(string),
-            _data: PhantomData
-        }
-    }
-
-    pub fn new_via_gamedata(game_data: &mut GameData, string: &str) -> Self {
-        Self::new(game_data.get_id_box_mut::<T>(), string)
-    }
-
-    pub fn to_str(self, game_data: &GameData) -> &str {
-        game_data.get_id_box::<T>().get_string(self.index)
-    }
-}
-
-#[derive(Ord, PartialOrd)]
-pub struct IdRef<T: BoxedValue> {
-    pub index: u32,
-    _data: PhantomData<T>
-}
-
-impl <T: BoxedValue> IdRef<T> {
-    pub fn from_str(key: &str, data: &GameData) -> Option<Self> {
-        let id_box = data.get_id_box::<T>();
-        id_box.get_index(key)
-            .map(|index| Self { index, _data: PhantomData })
-    }
-
-    pub fn to_str(self, data: &GameData) -> &str {
-        let id_box = data.get_id_box::<T>();
-        id_box.get_string(self.index)
-    }
-}
-
-impl <T: BoxedValue> std::fmt::Debug for IdRef<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let class_name = std::any::type_name::<T>();
-        let simple = class_name.split("::").last().unwrap();
-        write!(f, "{}Ref({})", simple, self.index)
-    }
-}
-
-impl <T: BoxedValue> std::hash::Hash for IdRef<T> {
-    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
-        self.index.hash(hasher);
-    }
-}
-
-impl <T: BoxedValue> Default for IdRef<T> {
-    fn default() -> Self {
-        Self { index: 0, _data: PhantomData }
-    }
-}
-
-impl <T: BoxedValue> PartialEq for IdRef<T> {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.index == rhs.index
-    }
-}
-
-impl <T: BoxedValue> Eq for IdRef<T> { }
-
-impl <T: BoxedValue> Copy for IdRef<T> { }
-impl <T: BoxedValue> Clone for IdRef<T> {
-    fn clone(&self) -> Self {
-        Self { index: self.index, _data: PhantomData }
-    }
-}
-
-impl <T: BoxedValue> ParadoxParse for IdRef<T> {
-    fn read(&mut self, parser: &mut Parser) -> Result<()> {
-        let val = parser.get_token()?.ok_or(ParseError::Eof)?;
-        let key = val.try_to_string()?;
-        if key == T::DEFAULT_STRING {
-            self.index = 0;
-            return Ok(());
-        }
-
-        let id_box = parser.get_game_data().get_id_box_mut::<T>();
-        self.index = id_box.get_index(key)
-            .ok_or_else(|| parser.validation_error(
-                    std::any::type_name::<Self>(),
-                    &key,
-                    "not known to be in gamedata",
-                    true, None).unwrap_err())?;
-        Ok(())
-    }
 }
 
 #[derive(Default, Debug)]

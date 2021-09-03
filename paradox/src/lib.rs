@@ -15,7 +15,6 @@ pub use paradox_derive::*;
 
 mod date;
 mod fixed;
-mod interning;
 mod game;
 mod lexer;
 mod parser;
@@ -25,7 +24,6 @@ mod save;
 pub use date::*;
 pub use fixed::*;
 pub use game::*;
-pub use interning::*;
 pub use lexer::*;
 pub use parser::*;
 pub use save::*;

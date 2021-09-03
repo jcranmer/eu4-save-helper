@@ -1,8 +1,8 @@
 use crate::{Country, Eu4Atom, Modifiers};
-use paradox::{IdKey, ParadoxParse};
+use paradox::ParadoxParse;
 use std::collections::HashMap;
 
-pub type CultureGroupList = HashMap<IdKey<CultureGroup>, CultureGroup>;
+pub type CultureGroupList = HashMap<Eu4Atom, CultureGroup>;
 
 #[derive(ParadoxParse, Default)]
 pub struct CultureGroup {
@@ -13,7 +13,7 @@ pub struct CultureGroup {
     #[optional] pub male_names: Vec<String>,
 
     #[collect]
-    pub cultures: HashMap<IdKey<Culture>, Culture>
+    pub cultures: HashMap<Eu4Atom, Culture>
 }
 
 #[derive(ParadoxParse, Default)]

@@ -56,13 +56,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
 
     // This type of field sets the default body instead.
     if has_tag(field, "collect") {
-        let make_key = if ty.contains("IdKey") {
-            quote_spanned!{field.ty.span() =>
-                IdKey::new_via_gamedata(parser.get_game_data(), &key)
-            }
-        } else {
-            quote_spanned!{field.ty.span() => (*key).into() }
-        };
+        let make_key = quote_spanned!{field.ty.span() => (*key).into() };
         let body = if ty.contains("HashMap") {
             quote_spanned!{ field.span() =>
                 key => {

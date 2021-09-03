@@ -20,7 +20,6 @@ mod modifiers;
 mod game;
 mod gamestate;
 mod religion;
-mod scope;
 mod trade;
 
 pub use advisors::*;
@@ -33,5 +32,4 @@ pub use modifiers::*;
 pub use game::*;
 pub use gamestate::Gamestate;
 pub use religion::*;
-pub use scope::*;
 pub use trade::*;
