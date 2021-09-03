@@ -363,7 +363,7 @@ impl <T: TableEntry> ScopedList<T> {
         quote! {
             impl paradox::FromParadoxKeyPair for #enum_name {
                 fn try_from(parser: &mut paradox::Parser, key: &str,
-                            value: paradox::UnparsedValue)
+                            value: paradox::Token)
                             -> Result<Self, paradox::ParseError> {
                     use paradox::ParadoxParse;
                     #early_parse

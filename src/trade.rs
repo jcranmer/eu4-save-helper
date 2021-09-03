@@ -1,5 +1,5 @@
-use eu4::{GameData, Gamestate};
-use paradox::{FixedPoint, ParserAtom};
+use eu4::{eu4_atom, Eu4Atom, GameData, Gamestate};
+use paradox::FixedPoint;
 use petgraph::graph::{EdgeIndex, Graph, NodeIndex};
 use petgraph::visit::{EdgeRef, Topo, Walker};
 use petgraph::Direction::Outgoing;
@@ -21,11 +21,17 @@ struct SimpleTradeNode {
     our_trade_power: FixedPoint,
     our_steer_modifier: FixedPoint,
     has_steering: bool,
+    trade_efficiency: FixedPoint,
 }
 
 impl SimpleTradeNode {
     fn total_trade_power(&self) -> FixedPoint {
-        self.collecting_trade_power + self.transfer_trade_power
+        let val = self.collecting_trade_power + self.transfer_trade_power;
+        if val == FixedPoint::ZERO {
+            FixedPoint::ONE
+        } else {
+            val
+        }
     }
 
     fn push_fraction(&self) -> FixedPoint {
@@ -43,9 +49,8 @@ type SimpleTradeGraph = Graph<SimpleTradeNode, SimpleTradeEdge>;
 
 struct TradeNetwork {
     graph: SimpleTradeGraph,
-    names: Vec<paradox::ParserAtom>,
+    names: Vec<Eu4Atom>,
     postorder: Vec<NodeIndex>,
-    trade_efficiency: FixedPoint,
     collecting: Vec<NodeIndex>,
     steering: Vec<EdgeIndex>,
 }
@@ -61,7 +66,7 @@ impl TradeNetwork {
         for _ in &names {
             graph.add_node(Default::default());
         }
-        let get_index = |name: &paradox::ParserAtom| {
+        let get_index = |name: &Eu4Atom| {
             NodeIndex::new(names.iter().position(|k| k == name).unwrap())
         };
         for name in &names {
@@ -78,13 +83,13 @@ impl TradeNetwork {
 
         // Cache for getting modifier information from a country.
         let mut modifier_cache = HashMap::new();
-        let mut get_trade_steering = |country: &ParserAtom| {
+        let mut get_trade_steering = |country: &Eu4Atom| {
             let modifiers = modifier_cache.entry(country.clone())
                 .or_insert_with(|| {
                     gamestate.countries[country]
                         .get_modifiers(data, gamestate, &country)
                 });
-            modifiers[&ParserAtom::from("trade_steering")]
+            modifiers[&eu4_atom!("trade_steering")]
                 .as_fixed_point() + FixedPoint::ONE
         };
 
@@ -137,6 +142,10 @@ impl TradeNetwork {
                 if tag == us {
                     if collecting {
                         merchant_collects.push(tn_idx);
+                        // Estimate trade efficiency in this node instead of
+                        // calculating it from first principles.
+                        graph[tn_idx].trade_efficiency =
+                            country_trade.money / country_trade.total;
                     }
                     graph[tn_idx].our_trade_power = trade_power;
                 }
@@ -185,7 +194,6 @@ impl TradeNetwork {
         Self {
             graph, names,
             postorder,
-            trade_efficiency: Default::default(),
             collecting: merchant_collects,
             steering: merchant_steers,
         }
@@ -205,9 +213,15 @@ impl TradeNetwork {
     }
 
     fn steering_power(&self, node_idx: NodeIndex) -> FixedPoint {
-        self.graph.edges_directed(node_idx, Outgoing)
+        let val = self.graph.edges_directed(node_idx, Outgoing)
             .map(|e| e.weight().trade_power_pushing)
-            .sum()
+            .sum();
+        // Adjust the total sum by 1 if it's 0 to avoid 0 / 0 calculations.
+        if val == FixedPoint::ZERO {
+            FixedPoint::ONE
+        } else {
+            val
+        }
     }
 
     fn compute_trade_values(&self, value: &mut [FixedPoint]) {
@@ -235,7 +249,8 @@ impl TradeNetwork {
             let node = &self.graph[node_idx];
             if self.is_collecting(node_idx) {
                 fraction[node_idx.index()] += f64::from(node.our_trade_power) /
-                    f64::from(node.total_trade_power());
+                    f64::from(node.total_trade_power()) *
+                    f64::from(node.trade_efficiency);
             }
             let push_fraction = f64::from(node.push_fraction());
             let all_steering = self.steering_power(node_idx);
@@ -289,7 +304,9 @@ impl TradeNetwork {
             ) * f64::from(e.weight().steering_bonus) *
                 trade_fractions[e.target().index()]
         }).sum::<f64>() + if self.is_collecting(node_idx) {
-            -push_derivative
+            f64::from(node.total_trade_power() - node.our_trade_power)
+                / tot_squared
+                * f64::from(node.trade_efficiency)
         } else {
             Default::default()
         }) * f64::from(trade_values[node_idx.index()])
@@ -327,17 +344,18 @@ pub fn optimize_trade(data: &GameData, gamestate: &Gamestate, country: &str) {
     let mut trade_fractions = vec![Default::default(); num_nodes];
     tn.compute_trade_values(&mut trade_values);
     tn.compute_trade_fractions(&mut trade_fractions);
+    let mut trade_derivatives = vec![Default::default(); num_nodes];
     for node_idx in tn.graph.node_indices() {
-        let i = node_idx.index();
-        println!("{}: {}, {:.6}", tn.names[i], trade_values[i], trade_fractions[i]);
-        println!("Derivative: {:.6}", tn.derivative(node_idx, &trade_values, &trade_fractions));
+        trade_derivatives[node_idx.index()] =
+            tn.derivative(node_idx, &trade_values, &trade_fractions);
     }
-    for idx in tn.collecting {
-        println!("Collecting in {}", tn.names[idx.index()]);
-    }
-    for e in tn.graph.edge_references() {
-        if tn.steering.contains(&e.id()) {
-            println!("Steering {}->{}", tn.names[e.source().index()], tn.names[e.target().index()]);
-        }
+    let mut node_indices : Vec<_> = tn.graph.node_indices()
+        .map(NodeIndex::index).collect();
+    node_indices.sort_unstable_by(|&a, &b| {
+        trade_derivatives[a].partial_cmp(&trade_derivatives[b]).unwrap()
+    });
+    for i in node_indices {
+        println!("{}: {:.6} (TV: {}, TF: {:.6})", tn.names[i],
+                 trade_derivatives[i], trade_values[i], trade_fractions[i]);
     }
 }

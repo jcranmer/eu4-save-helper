@@ -1,5 +1,5 @@
-use crate::{Country, Modifiers};
-use paradox::{IdKey, ParadoxParse, ParserAtom};
+use crate::{Country, Eu4Atom, Modifiers};
+use paradox::{IdKey, ParadoxParse};
 use std::collections::HashMap;
 
 pub type CultureGroupList = HashMap<IdKey<CultureGroup>, CultureGroup>;
@@ -23,7 +23,7 @@ pub struct Culture {
     #[optional] pub dynasty_names: Vec<String>,
     #[optional] pub female_names: Vec<String>,
     #[optional] pub male_names: Vec<String>,
-    #[optional] pub primary: ParserAtom,
+    #[optional] pub primary: Eu4Atom,
     
     #[optional] pub country: Modifiers,
     #[optional] pub province: Modifiers,

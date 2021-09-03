@@ -1,4 +1,4 @@
-use eu4::{GameData, Gamestate};
+use eu4::{Eu4Atom, GameData, Gamestate};
 mod trade;
 
 /*fn get_tier(gamedata: &GameData, gamestate: &Gamestate) {
@@ -12,7 +12,6 @@ fn main() -> Result<(), paradox::ParseError> {
     let gamestate = paradox::load_savegame::<eu4::Gamestate>(
         &std::path::Path::new("/tmp/TrailOfTears.eu4-37"),
 //        &paradox::get_default_save_dir().join("Europa Universalis IV/save games/Mamluks.eu4"),
-//      &paradox::get_default_save_dir().join("Europa Universalis IV/save games/older_autosave.eu4"),
         &mut eu4data.base_info
         )?;
     trade::optimize_trade(&eu4data, &gamestate,

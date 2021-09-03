@@ -1,8 +1,8 @@
-use std::borrow::Cow;
 use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 use thiserror::Error;
+use string_cache::{Atom, StaticAtomSet};
 
 const ERR_ON_INVALID_INPUT : bool = false;
 
@@ -14,7 +14,6 @@ type Result<T> = std::result::Result<T, ParseError>;
 // between games (and since I don't own all of them, I can't test all of the
 // issues here).
 
-pub type UnparsedValue = Token;
 impl Token {
     /// Convert the token into a string if it can be done.
     pub fn try_to_string(&self) -> Result<&str> {
@@ -26,24 +25,8 @@ impl Token {
     }
 }
 
-impl From<Token> for Cow<'static, str> {
-    fn from(t:Token) -> Cow<'static, str> {
-        match t {
-            Token::LBrace | Token::RBrace | Token::Eq =>
-                panic!("Shouldn't call this method if it's not a simple value"),
-            Token::String(s) => s.into(),
-            Token::Interned(s) => s.into(),
-            Token::Bool(b) => (if b { "yes" } else { "no" }).into(),
-            Token::Fixed(f) => f.to_string().into(),
-            Token::Float(f) => f.to_string().into(),
-            Token::Integer(i) => i.to_string().into(),
-            Token::Unsigned(i) => i.to_string().into()
-        }
-    }
-}
-
-impl From<Token> for ParserAtom {
-    fn from(t:Token) -> Self {
+impl <Static: StaticAtomSet> From<Token> for Atom<Static> {
+    fn from(t: Token) -> Self {
         match t {
             Token::LBrace | Token::RBrace | Token::Eq =>
                 panic!("Shouldn't call this method if it's not a simple value"),
@@ -58,15 +41,13 @@ impl From<Token> for ParserAtom {
     }
 }
 
-pub type ValuePair = (Option<Cow<'static, str>>, UnparsedValue);
-
 pub trait ParadoxParse {
     fn read(&mut self, parser: &mut Parser) -> Result<()>;
 }
 
 pub trait FromParadoxKeyPair {
     fn try_from(parser: &mut Parser, key: &str,
-                value: UnparsedValue) -> Result<Self>
+                value: Token) -> Result<Self>
         where Self: Sized;
 }
 
@@ -311,7 +292,7 @@ impl <'a> Parser<'a> {
     }
 
     pub fn try_parse<T: FromParadoxKeyPair>(&mut self, key: &str,
-                                            value: UnparsedValue) -> Result<T> {
+                                            value: Token) -> Result<T> {
         T::try_from(self, key, value)
     }
 

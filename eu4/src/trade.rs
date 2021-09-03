@@ -1,10 +1,11 @@
 use crate::{
+    Eu4Atom,
     Modifiers,
     ProvinceCondition,
     ProvinceRef,
     RgbColor
 };
-use paradox::{ParadoxParse, ParserAtom};
+use paradox::ParadoxParse;
 
 #[derive(ParadoxParse, Default, Debug)]
 pub struct TradeNode {
@@ -24,7 +25,7 @@ pub struct TradeNode {
 
 #[derive(ParadoxParse, Default, Debug)]
 pub struct TradeEdge {
-    pub name: ParserAtom, // XXX: tradenode ref
+    pub name: Eu4Atom, // XXX: tradenode ref
     path: Vec<ProvinceRef>,
     control: Vec<f64>
 }

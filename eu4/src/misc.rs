@@ -1,5 +1,5 @@
-use crate::{Modifiers, Weight};
-use paradox::{ParadoxParse, ParserAtom};
+use crate::{Eu4Atom, Modifiers, Weight};
+use paradox::ParadoxParse;
 
 #[derive(ParadoxParse, Default)]
 pub struct IdeaGroup {
@@ -9,9 +9,9 @@ pub struct IdeaGroup {
     #[optional] pub free: bool,
     #[optional] pub ai_will_do: Weight,
     #[optional] pub important: bool,
-    #[optional] pub category: ParserAtom,
+    #[optional] pub category: Eu4Atom,
 
-    #[collect] pub ideas: Vec<(ParserAtom, Modifiers)>
+    #[collect] pub ideas: Vec<(Eu4Atom, Modifiers)>
 }
 
 impl IdeaGroup {
@@ -29,7 +29,7 @@ impl IdeaGroup {
 
 #[derive(ParadoxParse, Default)]
 pub struct Policy {
-    monarch_power: ParserAtom,
+    monarch_power: Eu4Atom,
     potential: (), // Condition
     allow: (), // Condition
     ai_will_do: Weight,

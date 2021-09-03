@@ -1,10 +1,11 @@
-use paradox::{IdKey, ParadoxParse, ParseError, Parser, ParserAtom};
+use crate::Eu4Atom;
+use paradox::{IdKey, ParadoxParse, ParseError, Parser};
 use std::collections::HashMap;
 
 type ParseResult = Result<(), ParseError>;
 
 #[derive(Default)]
-pub struct CountryMap(HashMap<ParserAtom, Country>);
+pub struct CountryMap(HashMap<Eu4Atom, Country>);
 
 impl ParadoxParse for CountryMap {
     fn read(&mut self, parser: &mut Parser) -> ParseResult {
@@ -69,7 +70,7 @@ pub struct Area {}
 
 #[derive(ParadoxParse, Default)]
 pub struct Region {
-    #[optional] pub areas: Vec<ParserAtom>,
+    #[optional] pub areas: Vec<Eu4Atom>,
     #[optional] pub monsoon: [(); 2]
 }
 

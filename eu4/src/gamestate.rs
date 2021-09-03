@@ -1,9 +1,9 @@
-use crate::{GameData, Modifiers};
-use paradox::{Date, FixedPoint, ParadoxParse, ParserAtom};
+use crate::{Eu4Atom, GameData, Modifiers};
+use paradox::{Date, FixedPoint, ParadoxParse};
 use std::collections::HashMap;
 
 //type CountryRef = IdRef<crate::Country>;
-type CountryRef = ParserAtom;
+type CountryRef = Eu4Atom;
 
 #[derive(ParadoxParse, Default)]
 pub struct Gamestate {
@@ -12,14 +12,14 @@ pub struct Gamestate {
     pub speed: i32,
     pub multiplayer_random_seed: u32,
     pub multiplayer_random_count: i32,
-    pub current_age: ParserAtom, // XXX
+    pub current_age: Eu4Atom, // XXX
     pub next_age_progress: FixedPoint,
     pub id_counters: Vec<u32>,
     pub unit: i32,
     pub unit_template_id: i32,
-    pub flags: HashMap<ParserAtom, Date>,
+    pub flags: HashMap<Eu4Atom, Date>,
     pub start_date: Date,
-    pub map_area_data: HashMap<ParserAtom, ()>,
+    pub map_area_data: HashMap<Eu4Atom, ()>,
     pub total_military_power: f64,
     pub average_military_power: f64,
     pub institution_origin: Vec<i32>, // XXX: ProvinceRef
@@ -29,7 +29,7 @@ pub struct Gamestate {
     #[repeated] pub unit_templates: Vec<()>,
     pub production_leader_tag: Vec<CountryRef>,
     pub tradegoods_total_produced: Vec<FixedPoint>,
-    pub change_price: HashMap<ParserAtom, ()>,
+    pub change_price: HashMap<Eu4Atom, ()>,
     pub id: (),
     pub dynasty: (),
     #[repeated] pub rebel_faction: Vec<()>,
@@ -39,13 +39,13 @@ pub struct Gamestate {
     pub hre_leagues_status: i32,
     pub hre_religion_status: i32,
     #[repeated] pub trade_league: Vec<TradeLeague>,
-    pub religions: HashMap<ParserAtom, ()>,
-    pub religion_instance_data: HashMap<ParserAtom, ()>,
+    pub religions: HashMap<Eu4Atom, ()>,
+    pub religion_instance_data: HashMap<Eu4Atom, ()>,
     pub fired_events: (),
     pub pending_events: (),
-    pub provinces: HashMap<ParserAtom, Province>,
+    pub provinces: HashMap<Eu4Atom, Province>,
     pub countries: HashMap<CountryRef, Country>,
-    pub active_advisors: HashMap<ParserAtom, ()>,
+    pub active_advisors: HashMap<Eu4Atom, ()>,
     pub diplomacy: (),
     pub combat: (),
     #[repeated] pub active_war: Vec<()>,
@@ -61,7 +61,7 @@ pub struct Gamestate {
     pub unit_manager: (),
     pub trade_company_manager: (),
     pub tech_level_dates: (), // it's a [(String, Date); 3]
-    pub idea_dates: HashMap<ParserAtom, Date>,
+    pub idea_dates: HashMap<Eu4Atom, Date>,
     #[repeated] pub checksum: Vec<String>,
     #[optional] pub player: CountryRef,
 }
@@ -80,7 +80,7 @@ pub struct TradeIncoming {
 
 #[derive(ParadoxParse, Default)]
 pub struct TradeNode {
-    pub definitions: ParserAtom,
+    pub definitions: Eu4Atom,
     #[optional] pub current: FixedPoint,
     #[optional] pub local_value: FixedPoint,
     #[optional] pub outgoing: FixedPoint,
@@ -105,7 +105,7 @@ pub struct TradeNode {
     #[optional] pub top_power_values: Vec<FixedPoint>,
     #[optional] pub trade_company_region: bool,
     pub most_recent_treasure_ship_passage: Date,
-    #[collect] pub country_info: Vec<(ParserAtom, CountryTradeNode)>,
+    #[collect] pub country_info: Vec<(Eu4Atom, CountryTradeNode)>,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -135,7 +135,7 @@ pub struct CountryTradeNode {
     #[optional] pub t_from: HashMap<CountryRef, FixedPoint>,
     #[optional] pub t_out: FixedPoint,
     #[optional] pub t_to: HashMap<CountryRef, FixedPoint>,
-    #[optional] pub trading_policy: ParserAtom,
+    #[optional] pub trading_policy: Eu4Atom,
     #[optional] pub trading_policy_date: Date,
     #[repeated] pub modifier: Vec<()>,
     #[optional] pub privateer_mission: FixedPoint,
@@ -144,7 +144,7 @@ pub struct CountryTradeNode {
 
 #[derive(ParadoxParse, Default)]
 pub struct AppliedModifiers {
-    pub modifier: ParserAtom,
+    pub modifier: Eu4Atom,
     pub date: Date,
     #[optional] pub hidden: bool,
     #[optional] pub ruler_modifier: bool,
@@ -152,7 +152,7 @@ pub struct AppliedModifiers {
 
 #[derive(ParadoxParse, Default)]
 pub struct ActivePolicy {
-    pub policy: ParserAtom,
+    pub policy: Eu4Atom,
     pub date: Date,
 }
 
@@ -161,7 +161,7 @@ pub struct HreInfo {
     pub emperor: CountryRef,
     pub imperial_influence: FixedPoint,
     #[repeated] pub old_emperor: Vec<()>,
-    #[repeated] pub passed_reform: Vec<ParserAtom>,
+    #[repeated] pub passed_reform: Vec<Eu4Atom>,
     pub continent: u32,
     pub imperial_ban_allowed: bool,
     pub internal_hre_crb: bool,
@@ -180,22 +180,22 @@ pub struct Country {
     #[optional] pub was_player: bool,
     #[optional] pub has_set_government_name: bool,
     pub government_rank: i32,
-    #[optional] pub government_name: ParserAtom,
+    #[optional] pub government_name: Eu4Atom,
     pub subject_focus: i32,
     pub trade_mission: FixedPoint,
     pub blockade_mission: FixedPoint,
     pub continent: Vec<i32>,
-    #[optional] pub national_focus: ParserAtom,
+    #[optional] pub national_focus: Eu4Atom,
     pub institutions: Vec<i32>,
     #[optional] pub technology_cost: FixedPoint,
     #[optional] pub num_of_age_objectives: i32,
-    #[repeated] pub active_age_ability: Vec<ParserAtom>,
+    #[repeated] pub active_age_ability: Vec<Eu4Atom>,
     #[optional] pub last_focus_move: Date,
     #[optional] pub last_sent_alliance_offer: Date,
     #[optional] pub history: (),
-    #[optional] pub flags: HashMap<ParserAtom, Date>,
-    #[optional] pub hidden_flags: HashMap<ParserAtom, Date>,
-    #[optional] pub variables: HashMap<ParserAtom, FixedPoint>,
+    #[optional] pub flags: HashMap<Eu4Atom, Date>,
+    #[optional] pub hidden_flags: HashMap<Eu4Atom, Date>,
+    #[optional] pub variables: HashMap<Eu4Atom, FixedPoint>,
     pub capital: i32, // XXX: ProvinceRef
     #[optional] pub fixed_capital: i32, // XXX: ProvinceRef
     #[optional] pub original_capital: i32, // XXX: ProvinceRef
@@ -208,10 +208,10 @@ pub struct Country {
     #[optional] pub in_debt: bool,
     #[optional] pub karma: FixedPoint,
     pub isolationism: i32,
-    #[optional] pub potential_incidents: Vec<ParserAtom>,
-    #[optional] pub active_incidents: Vec<ParserAtom>,
-    #[optional] pub past_incidents: Vec<ParserAtom>,
-    #[optional] pub incident_variables: HashMap<ParserAtom, FixedPoint>,
+    #[optional] pub potential_incidents: Vec<Eu4Atom>,
+    #[optional] pub active_incidents: Vec<Eu4Atom>,
+    #[optional] pub past_incidents: Vec<Eu4Atom>,
+    #[optional] pub incident_variables: HashMap<Eu4Atom, FixedPoint>,
     #[optional] pub harmony: FixedPoint,
     #[optional] pub harmonized_religions: Vec<i32>,
     pub initialized_rivals: bool,
@@ -220,25 +220,25 @@ pub struct Country {
     #[optional] pub name: String,
     #[optional] pub adjective: String,
     pub dirty_colony: bool,
-    #[optional] pub primary_culture: ParserAtom,
-    #[optional] pub dominant_culture: ParserAtom,
-    #[repeated] pub accepted_culture: Vec<ParserAtom>,
-    #[optional] pub religion: ParserAtom,
-    #[optional] pub secondary_religion: ParserAtom,
-    #[optional] pub religious_school: ParserAtom,
-    #[optional] pub dominant_religion: ParserAtom,
+    #[optional] pub primary_culture: Eu4Atom,
+    #[optional] pub dominant_culture: Eu4Atom,
+    #[repeated] pub accepted_culture: Vec<Eu4Atom>,
+    #[optional] pub religion: Eu4Atom,
+    #[optional] pub secondary_religion: Eu4Atom,
+    #[optional] pub religious_school: Eu4Atom,
+    #[optional] pub dominant_religion: Eu4Atom,
     #[optional] pub fervor: (),
-    #[optional] pub technology_group: ParserAtom,
+    #[optional] pub technology_group: Eu4Atom,
     #[optional] pub liberty_desire: FixedPoint,
     #[repeated] pub temporary_liberty_desire: Vec<()>,
-    #[optional] pub unit_type: ParserAtom,
+    #[optional] pub unit_type: Eu4Atom,
     pub technology: (),
     #[repeated] pub estate: Vec<()>,
     #[repeated] pub faction: Vec<()>,
     #[optional] pub top_faction: i32,
     #[repeated] pub rival: Vec<()>,
     pub highest_possible_fort: i32,
-    pub highest_possible_fort_building: ParserAtom,
+    pub highest_possible_fort_building: Eu4Atom,
     pub transfer_home_bonus: FixedPoint,
     #[repeated] pub enemy: Vec<CountryRef>,
     #[optional] pub overlord: CountryRef,
@@ -389,15 +389,15 @@ pub struct Country {
     #[optional] pub piety: FixedPoint,
     #[optional] pub recovery_motivation: FixedPoint,
     #[optional] pub papal_influence: FixedPoint,
-    #[optional] pub blessing: ParserAtom,
+    #[optional] pub blessing: Eu4Atom,
     #[optional] pub corruption: FixedPoint,
     #[optional] pub root_out_corruption_slider: FixedPoint,
     #[optional] pub doom: FixedPoint,
     #[optional] pub authority: FixedPoint,
     #[optional] pub patriarch_authority: FixedPoint,
-    #[optional] pub personal_deity: ParserAtom,
-    #[optional] pub fetishist_cult: ParserAtom,
-    #[optional] pub unlock_cult: Vec<ParserAtom>,
+    #[optional] pub personal_deity: Eu4Atom,
+    #[optional] pub fetishist_cult: Eu4Atom,
+    #[optional] pub unlock_cult: Vec<Eu4Atom>,
     #[optional] pub legitimacy: FixedPoint,
     #[optional] pub horde_unity: FixedPoint,
     pub mercantilism: FixedPoint,
@@ -405,7 +405,7 @@ pub struct Country {
     #[optional] pub army_professionalism: f64,
     #[optional] pub max_historic_army_professionalism: f64,
     #[optional] pub church: (),
-    pub active_idea_groups: HashMap<ParserAtom, i32>,
+    pub active_idea_groups: HashMap<Eu4Atom, i32>,
     #[optional] pub active_religious_reform: (),
     #[optional] pub active_native_advancement: (),
     #[repeated] pub advisor: Vec<()>,
@@ -457,7 +457,7 @@ pub struct Country {
     #[optional] pub influenced_by: CountryRef,
     #[optional] pub mothballed_forts: Vec<i32>,
     pub innovativeness: FixedPoint,
-    #[optional] pub completed_missions: Vec<ParserAtom>,
+    #[optional] pub completed_missions: Vec<Eu4Atom>,
     pub historic_stats_cache: (),
     pub country_missions: (),
     #[optional] pub government_reform_progress: FixedPoint,
@@ -473,7 +473,7 @@ pub struct Country {
     #[optional] pub last_conversion_secondary: Date,
     #[optional] pub last_sacrifice: Date,
     #[optional] pub last_sold_province: Date,
-    #[optional] pub naval_doctrine: ParserAtom,
+    #[optional] pub naval_doctrine: Eu4Atom,
     #[optional] pub num_of_janissaries: i32,
     #[optional] pub num_of_overseas: i32,
     #[optional] pub num_ships_privateering: i32,
@@ -487,16 +487,16 @@ pub struct Country {
     #[optional] pub cooldowns: (),
     #[optional] pub disaster_started: Vec<i32>,
     #[optional] pub disaster_progress: Vec<FixedPoint>,
-    #[repeated] pub ignore_decision: Vec<ParserAtom>,
+    #[repeated] pub ignore_decision: Vec<Eu4Atom>,
     #[optional] pub colonial_core: i32,
     #[optional] pub golden_era_date: Date,
     #[optional] pub diplomacy: (), // Or is this repeated?
     #[optional] pub harmonization_progress: FixedPoint,
-    #[optional] pub harmonizing_with_religion: ParserAtom,
+    #[optional] pub harmonizing_with_religion: Eu4Atom,
     #[optional] pub ai_condottieri_malus_until: Date,
     #[optional] pub num_of_independence_supporters: i32,
     #[optional] pub ai_condottieri_dont_send_until: (),
-    #[optional] pub active_disaster: ParserAtom,
+    #[optional] pub active_disaster: Eu4Atom,
     #[optional] pub subject_interactions: (),
     #[optional] pub support_independence: (),
     #[optional] pub update_supply_range: bool,
@@ -506,7 +506,7 @@ pub struct Country {
     #[optional] pub mercenary_company: (),
     #[optional] pub used_governing_capacity: FixedPoint,
     #[optional] pub hre_vote: i32,
-    #[optional] pub force_converted: ParserAtom,
+    #[optional] pub force_converted: Eu4Atom,
     #[optional] pub interactions_last_used: (),
     #[optional] pub last_sent_peace_offer_date: Date,
     #[optional] pub num_expanded_administration: i32,
@@ -518,62 +518,92 @@ pub struct Country {
 
 impl Country {
     pub fn get_modifiers(&self, data: &GameData,
-                         gamestate: &Gamestate, tag: &ParserAtom) -> Modifiers {
+                         gamestate: &Gamestate, tag: &Eu4Atom) -> Modifiers {
         let mut mods = Modifiers::default();
         // Static modifiers
         let static_mod = &data.static_modifiers;
         // XXX: patriarch_authority_global
-        // XXX: war_taxes
-        // XXX: privateering
-        // XXX: positive_mandate, negative_mandate
-        // XXX: bankruptcy
-        // XXX: war, peace, unconditional_surrender, call_for_peace
         macro_rules! apply_static {
             ($label:ident) => {
-                let atom = ParserAtom::from(stringify!($label));
+                let atom = Eu4Atom::from(stringify!($label));
                 let modifier = &static_mod[&atom].modifiers;
                 mods.add_modifiers(modifier);
             };
             (scaled $label:ident) => {
-                let atom = ParserAtom::from(stringify!($label));
+                let atom = Eu4Atom::from(stringify!($label));
                 let modifier = &static_mod[&atom].modifiers;
                 mods.add_scaled_modifiers(modifier, self.$label);
             };
             (scaled 100 $label:ident) => {
-                let atom = ParserAtom::from(stringify!($label));
+                let atom = Eu4Atom::from(stringify!($label));
                 let modifier = &static_mod[&atom].modifiers;
                 mods.add_scaled_modifiers(modifier, self.$label / 100.into());
             };
             (+/- $label:ident) => {
                 let value = self.$label;
                 let (atom, scale) = if value < FixedPoint::ZERO {
-                    (ParserAtom::from(concat!("negative_", stringify!($label))),
+                    (Eu4Atom::from(concat!("negative_", stringify!($label))),
                         -value)
                 } else {
-                    (ParserAtom::from(concat!("positive_", stringify!($label))),
+                    (Eu4Atom::from(concat!("positive_", stringify!($label))),
                         value)
                 };
                 let modifier = &static_mod[&atom].modifiers;
                 mods.add_scaled_modifiers(modifier, scale);
-            }
+            };
+            (scaled $label:ident * $e:expr) => {
+                let atom = Eu4Atom::from(stringify!($label));
+                let modifier = &static_mod[&atom].modifiers;
+                mods.add_scaled_modifiers(modifier, $e);
+            };
         }
-        mods.add_modifiers(&static_mod[&ParserAtom::from("base_values")].modifiers);
+        mods.add_modifiers(&static_mod[&eu4_atom!("base_values")].modifiers);
+        // XXX: war_taxes
         apply_static!(scaled stability);
         apply_static!(+/- stability);
+        // XXX: privateering
+        // XXX: positive/negative mandate
         apply_static!(scaled inflation);
+        // XXX: bankruptcy
+        // XXX: war, peace, unconditional_surrender, call_for_peace
         apply_static!(scaled war_exhaustion);
         apply_static!(scaled 100 doom);
         apply_static!(scaled 100 authority);
-        apply_static!(+/- piety);
+        // XXX: regency_council, trade_efficiency, production_efficiency
+        // XXX: trade_refusal, mercantilism
         apply_static!(scaled 100 army_tradition);
         apply_static!(scaled 100 navy_tradition);
+        apply_static!(+/- piety);
+        // XXX: DoF, emperor/HRE logic
+        // XXX: num of marriages/provinces, development
+        apply_static!(scaled 100 tribal_allegiance);
+        let fp_50 : FixedPoint = 50.into();
+        apply_static!(scaled legitimacy * self.legitimacy - fp_50);
+        apply_static!(scaled horde_unity * self.horde_unity - fp_50);
+        apply_static!(scaled devotion * self.devotion - fp_50);
+        apply_static!(scaled meritocracy * self.meritocracy - fp_50);
+        if self.meritocracy < fp_50 {
+            apply_static!(scaled low_meritocracy * fp_50 - self.meritocracy);
+        }
+        apply_static!(scaled 100 corruption);
+        // XXX: root out corruption, recovery_motivation, militarized_socierty
+        // XXX: luck, OE
+        apply_static!(scaled 100 prestige);
+        // XXX: parliament, republican tradition
+        // XXX: bunch of stuff (curia_controller - streltsy)
+        apply_static!(scaled power_projection *
+                      self.current_power_projection / 100.into());
+        if self.current_power_projection >= 25.into() {
+            apply_static!(power_projection_25);
+        }
+        // XXX: karma, natives, harmony
         apply_static!(scaled 100 innovativeness);
 
         // More complex static modifiers
         for trade_league in &gamestate.trade_league {
             if &trade_league.members[0] == tag {
                 mods.add_scaled_modifiers(
-                    &static_mod[&ParserAtom::from("scaled_trade_league_leader")].modifiers,
+                    &static_mod[&eu4_atom!("scaled_trade_league_leader")].modifiers,
                     (trade_league.members.len() as i32).into());
             }
             if trade_league.members.contains(tag) {
@@ -606,14 +636,17 @@ impl Country {
         // XXX: monarch whatevers
         // XXX: naval doctrine
         // XXX: great projects
-        // XXX: estates
+        // XXX: estates, factions
+        // XXX: ruler personality
+        // XXX: age bonus
+        // XXX: disasters
         mods
     }
 }
 
 #[derive(ParadoxParse, Default)]
 pub struct Province {
-    #[optional] pub flags: HashMap<ParserAtom, Date>,
+    #[optional] pub flags: HashMap<Eu4Atom, Date>,
     pub name: String,
     #[optional] pub territorial_core: CountryRef,
     #[optional] pub owner: CountryRef,
@@ -627,13 +660,13 @@ pub struct Province {
     #[optional] pub last_estate_grant: Date,
     #[optional] pub cores: Vec<CountryRef>,
     #[optional] pub claims: Vec<CountryRef>,
-    #[optional] pub trade: ParserAtom, // IdRef<crate::TradeNode>,
+    #[optional] pub trade: Eu4Atom, // IdRef<crate::TradeNode>,
     #[optional] pub unit: (),
     #[optional] pub spy_actions: (),
-    #[optional] pub original_culture: ParserAtom,
-    #[optional] pub culture: ParserAtom,
-    #[optional] pub religion: ParserAtom,
-    #[optional] pub original_religion: ParserAtom,
+    #[optional] pub original_culture: Eu4Atom,
+    #[optional] pub culture: Eu4Atom,
+    #[optional] pub religion: Eu4Atom,
+    #[optional] pub original_religion: Eu4Atom,
     #[optional] pub capital: String,
     #[optional] pub is_city: bool,
     #[optional] pub colonysize: FixedPoint,
@@ -645,9 +678,9 @@ pub struct Province {
     #[optional] pub base_production: FixedPoint,
     #[optional] pub base_manpower: FixedPoint,
     #[optional] pub unrest: FixedPoint,
-    #[optional] pub likely_rebels: ParserAtom,
+    #[optional] pub likely_rebels: Eu4Atom,
     #[optional] pub hre: bool,
-    pub trade_goods: ParserAtom,
+    pub trade_goods: Eu4Atom,
     #[optional] pub devastation: FixedPoint,
     #[optional] pub local_autonomy: FixedPoint,
     #[optional] pub ub: bool,
@@ -668,8 +701,8 @@ pub struct Province {
     #[optional] pub winter: i32,
     #[optional] pub previous_winter: i32,
     #[repeated] pub modifier: Vec<()>,
-    #[repeated] pub triggered_modifier: Vec<ParserAtom>,
-    #[optional] pub applied_triggered_modifier: ParserAtom,
+    #[repeated] pub triggered_modifier: Vec<Eu4Atom>,
+    #[optional] pub applied_triggered_modifier: Eu4Atom,
     #[repeated] pub diplomacy_construction: Vec<()>,
     #[repeated] pub merchant_construction: Vec<()>,
     #[repeated] pub military_construction: Vec<()>,
@@ -699,7 +732,7 @@ pub struct Province {
     #[optional] pub latent_trade_goods: (),
     #[optional] pub active_trade_company: bool,
     #[optional] pub center_of_religion: bool,
-    #[optional] pub native_culture: ParserAtom,
+    #[optional] pub native_culture: Eu4Atom,
     #[optional] pub country_improve_count: (),
 }
 
@@ -717,5 +750,5 @@ pub struct Statistics {
 #[derive(ParadoxParse, Default)]
 pub struct LedgerData {
     pub name: CountryRef,
-    #[optional] pub data: HashMap<ParserAtom, i32>,
+    #[optional] pub data: HashMap<Eu4Atom, i32>,
 }

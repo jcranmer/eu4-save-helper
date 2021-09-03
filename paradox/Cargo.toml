@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.0"
+derivative = "2.2"
 dirs = "2.0"
 string_cache = "0.8"
 thiserror = "1.0"

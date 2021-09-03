@@ -1,4 +1,5 @@
-use paradox::{FixedPoint, ParadoxParse, Parser, ParserAtom, ParseError};
+use crate::Eu4Atom;
+use paradox::{FixedPoint, ParadoxParse, Parser, ParseError};
 
 /*paradox::modifier_list! {
     modifier(Country, army_tradition, FixedPoint);
@@ -522,11 +523,11 @@ impl core::ops::Mul<FixedPoint> for ModifierValue {
 
 #[derive(Default, Debug)]
 pub struct Modifiers {
-    pub modifiers: Vec<(ParserAtom, ModifierValue)>,
+    pub modifiers: Vec<(Eu4Atom, ModifierValue)>,
 }
 
 impl Modifiers {
-    pub fn read_field(&mut self, key: ParserAtom,
+    pub fn read_field(&mut self, key: Eu4Atom,
                       parser: &mut Parser) -> Result<(), ParseError> {
         let value = parser.get_token()?.ok_or(ParseError::Eof)?;
         let str_value = value.try_to_string()?;
@@ -562,9 +563,9 @@ impl Modifiers {
     }
 }
 
-impl core::ops::Index<&'_ ParserAtom> for Modifiers {
+impl core::ops::Index<&'_ Eu4Atom> for Modifiers {
     type Output = ModifierValue;
-    fn index(&self, idx: &ParserAtom) -> &ModifierValue {
+    fn index(&self, idx: &Eu4Atom) -> &ModifierValue {
         static DUMMY_VAL : ModifierValue = ModifierValue::Bool(false);
         self.modifiers.binary_search_by_key(idx, |(k, _)| k.clone())
             .map(|idx| &self.modifiers[idx].1)
@@ -572,8 +573,8 @@ impl core::ops::Index<&'_ ParserAtom> for Modifiers {
     }
 }
 
-impl core::ops::IndexMut<&'_ ParserAtom> for Modifiers {
-    fn index_mut(&mut self, key: &ParserAtom) -> &mut ModifierValue {
+impl core::ops::IndexMut<&'_ Eu4Atom> for Modifiers {
+    fn index_mut(&mut self, key: &Eu4Atom) -> &mut ModifierValue {
         match self.modifiers.binary_search_by_key(key, |(k, _)| k.clone()) {
             Ok(idx) => &mut self.modifiers[idx].1,
             Err(idx) => {

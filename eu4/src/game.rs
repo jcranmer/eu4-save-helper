@@ -1,4 +1,5 @@
-use paradox::{BoxedValue, IdKey, ParserAtom, TypeDefinition};
+use crate::Eu4Atom;
+use paradox::{BoxedValue, IdKey, TypeDefinition};
 use std::collections::HashMap;
 
 #[derive(paradox::GameData)]
@@ -48,10 +49,10 @@ pub struct GameData {
     //scripted_triggers: HashMap<IdKey<crate::ScriptedTrigger>, crate::ScriptedTrigger>,
 
     #[parse = "common/static_modifiers"]
-    pub static_modifiers: HashMap<ParserAtom, crate::EventModifier>,
+    pub static_modifiers: HashMap<Eu4Atom, crate::EventModifier>,
 
     #[parse = "common/event_modifiers"]
-    pub event_modifiers: HashMap<ParserAtom, crate::EventModifier>,
+    pub event_modifiers: HashMap<Eu4Atom, crate::EventModifier>,
 
     //#[parse = "events"]
     //events: crate::EventList,

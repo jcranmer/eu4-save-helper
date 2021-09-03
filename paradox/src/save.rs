@@ -268,7 +268,7 @@ pub fn ironmelt(in_path: &Path, out_path: &Path) -> Result<(), ParseError> {
                     is_key = false;
                 },
                 t => {
-                    let as_string = std::borrow::Cow::from(t);
+                    let as_string = ParserAtom::from(t);
                     if is_array_known {
                         if is_array {
                             write!(writer, " {}", as_string)?;

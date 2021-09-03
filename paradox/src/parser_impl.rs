@@ -3,6 +3,7 @@ use crate::parser::*;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::str::FromStr;
+use string_cache::{Atom, StaticAtomSet};
 
 type DynError = Box<dyn StdError>;
 type ParseResult = Result<(), ParseError>;
@@ -56,10 +57,10 @@ impl ParadoxParse for Date {
     }
 }
 
-impl ParadoxParse for ParserAtom {
+impl <Static: StaticAtomSet> ParadoxParse for Atom<Static> {
     fn read(&mut self, parser: &mut Parser) -> ParseResult {
         let val = parser.get_token()?.ok_or(ParseError::Eof)?;
-        *self = ParserAtom::from(val);
+        *self = Self::from(val);
         Ok(())
     }
 }

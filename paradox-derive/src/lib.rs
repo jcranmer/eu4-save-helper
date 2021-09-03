@@ -119,7 +119,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
         Some(format_ident!("seen_{}", name))
     };
     let field_match = quote_spanned!{field.span() =>
-        key if key.as_ref() == #stringy_name
+        key if key == eu4_atom!(#stringy_name)
     };
     let check_presence = if let Some(ref check_name) = check_name {
         Some(quote_spanned!{field.span() =>

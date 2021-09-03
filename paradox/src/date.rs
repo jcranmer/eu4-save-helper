@@ -4,7 +4,7 @@
 /// calendars.
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct Date {
-    year: u16,
+    year: i16,
     month: u8,
     day: u8
 }
@@ -93,7 +93,7 @@ pub(crate) fn convert_date(mut val: u32) -> Date {
     let hours = extract_mod(&mut val, 24);
     assert_eq!(hours, 0);
     let mut day_in_year = extract_mod(&mut val, 365);
-    let year = val - 5000;
+    let year = val as i32 - 5000;
     let (mut month, mut day) = (0, 0);
     for i in 0..12 {
         let days_in_month = MONTH_DAYS[i] as u32;
@@ -105,7 +105,7 @@ pub(crate) fn convert_date(mut val: u32) -> Date {
             day_in_year -= days_in_month;
         }
     }
-    Date { year: year as u16, month: month as u8, day: day as u8 }
+    Date { year: year as i16, month: month as u8, day: day as u8 }
 }
 
 #[cfg(test)]
