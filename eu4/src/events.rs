@@ -1,4 +1,4 @@
-use crate::{CountryCondition, Factor};
+use crate::Factor;
 use paradox::{ParadoxParse};
 
 #[derive(ParadoxParse, Default)]
@@ -14,7 +14,7 @@ pub struct CountryEvent {
 
     #[optional] pub mean_time_to_happen: MeanTimeToHappen,
 
-    pub trigger: Vec<CountryCondition>
+    pub trigger: (), // Vec<CountryCondition>,
 }
 
 #[derive(ParadoxParse, Default)]

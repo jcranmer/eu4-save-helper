@@ -45,9 +45,6 @@ pub struct GameData {
     #[parse = "common/tradenodes"]
     pub trade: TypeDefinition<crate::TradeNode>,
 
-    //#[parse = "common/scripted_triggers"]
-    //scripted_triggers: HashMap<IdKey<crate::ScriptedTrigger>, crate::ScriptedTrigger>,
-
     #[parse = "common/static_modifiers"]
     pub static_modifiers: HashMap<Eu4Atom, crate::EventModifier>,
 
@@ -80,7 +77,6 @@ impl_box!(crate::TradeNode, 9);
 impl_box!(crate::Climate, 10);
 impl_box!(crate::TradeGood, 11, "nogoods");
 impl_box!(crate::AdvisorType, 12);
-impl_box!(crate::ScriptedTrigger, 13);
 impl_box!(crate::IdeaGroup, 14);
 impl_box!(crate::EventModifier, 15);
 impl_box!(crate::Policy, 16);

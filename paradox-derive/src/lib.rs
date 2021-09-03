@@ -2,7 +2,6 @@ extern crate proc_macro;
 
 mod game;
 mod scopes;
-mod tables;
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
@@ -92,16 +91,6 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
 
     // This type of field sets the default body instead.
     if has_tag(field, "modifiers") {
-        if ty.contains("Vec") {
-            // LEGACY
-            let body = quote_spanned!{ field.span() =>
-                key => {
-                    let value = parser.get_token()?.unwrap();
-                    self.#name.push(parser.try_parse(&key, value)?);
-                },
-            };
-            return FieldHandler { name, body, check_name: None, is_default: true };
-        }
         let body = quote_spanned!{ field.span() =>
             key => {
                 self.#name.read_field(key, parser)?;
@@ -134,18 +123,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
     };
 
     // Build the body of the match.
-    let body = if ty.starts_with("Vec <") &&
-            (ty.ends_with("Modifier >") || ty.ends_with("Effect >") ||
-             ty.ends_with("Condition >")) {
-        // List of modifiers are handled with a special parser, due to issues
-        // doing so with other types.
-        quote_spanned!{field.span() =>
-            #field_match => {
-                #check_presence
-                self.#name = paradox::parse_key_pair_list(parser)?;
-            }
-        }
-    } else {
+    let body = {
         // Regular types. Build up a check here.
         let parsee = quote_spanned!{field.span() =>
             let parsee : &mut dyn paradox::ParadoxParse
@@ -248,52 +226,6 @@ pub fn derive_game_data(input: proc_macro::TokenStream)
     game::implement_game(&input)
         .unwrap_or_else(|err| err.0)
         .into()
-}
-
-/// Generate a set of modifier enums and associated parsing.
-///
-/// This macro takes as input a table of modifiers, such as:
-/// ```rust
-///   modifier_list!{
-///     modifier(Country, country_modifier, FixedPoint);
-///   }
-/// ```
-///
-/// The first parameter is the kind of scope that the modifier applies to.
-///
-/// The second parameter is the name of modifier.
-///
-/// The third and final parameter is the type of the modifier.
-#[proc_macro]
-pub fn modifier_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let table = parse_macro_input!(input as tables::ScopedModifierList);
-    table.generate_code().into()
-}
-
-/// Generate a set of condition enums and associated parsing.
-///
-/// This macro takes as input a table of conditions, such as:
-/// ```rust
-///   condition_list!{
-///     condition(Country, country_condition, FixedPoint);
-///   }
-/// ```
-///
-/// The first parameter is the kind of scope that the condition applies to.
-///
-/// The second parameter is the name of condition.
-///
-/// The third and final parameter is the type of the condition.
-#[proc_macro]
-pub fn condition_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let table = parse_macro_input!(input as tables::ScopedConditionList);
-    table.generate_code().into()
-}
-
-#[proc_macro]
-pub fn effect_list(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let table = parse_macro_input!(input as tables::ScopedEffectList);
-    table.generate_code().into()
 }
 
 #[proc_macro]

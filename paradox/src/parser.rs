@@ -45,12 +45,6 @@ pub trait ParadoxParse {
     fn read(&mut self, parser: &mut Parser) -> Result<()>;
 }
 
-pub trait FromParadoxKeyPair {
-    fn try_from(parser: &mut Parser, key: &str,
-                value: Token) -> Result<Self>
-        where Self: Sized;
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     LBrace,
@@ -289,11 +283,6 @@ impl <'a> Parser<'a> {
                 eprintln!("Error at {}", self.lexer.get_location_info());
                 Err(err)
             })
-    }
-
-    pub fn try_parse<T: FromParadoxKeyPair>(&mut self, key: &str,
-                                            value: Token) -> Result<T> {
-        T::try_from(self, key, value)
     }
 
     pub fn get_token(&mut self) -> Result<Option<Token>> {
