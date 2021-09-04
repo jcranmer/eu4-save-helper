@@ -39,6 +39,7 @@ pub struct TradeGood {
     #[optional] is_valuable: bool,
     #[optional] rnw_latent_chance: u32,
     #[optional] trigger: (),
+    #[optional] chance: (),
 }
 
 #[derive(ParadoxParse, Default)]

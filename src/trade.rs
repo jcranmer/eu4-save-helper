@@ -127,20 +127,12 @@ impl TradeNetwork {
         let mut merchant_steers = Vec::with_capacity(16);
         for gs_node in &gamestate.trade.node {
             let tn_idx = get_index(&gs_node.definitions);
-            println!("{}:", names[tn_idx.index()]);
             {
                 let mut node = &mut graph[tn_idx];
                 node.local_trade_value = gs_node.local_value;
                 node.collecting_trade_power = gs_node.collector_power;
                 node.transfer_trade_power = gs_node.pull_power;
             }
-            println!("  current: {}", gs_node.current);
-            println!("  local_value: {}", gs_node.local_value);
-            println!("  outgoing: {}", gs_node.outgoing);
-            println!("  value_added_outgoing: {}", gs_node.value_added_outgoing);
-            println!("  steer_power: {:?}", gs_node.steer_power);
-            println!("  collector_power: {}", gs_node.collector_power);
-            println!("  pull_power: {}", gs_node.pull_power);
             let mut total_trade_steer = FixedPoint::ZERO;
             //let max_p_power = gs_node.country_info
             //    .iter().map(|(_, x)| x.province_power).max()
@@ -204,12 +196,6 @@ impl TradeNetwork {
             for (&e, &i) in edge_idx.iter().zip(gs_node.steer_power.iter()) {
                 if !has_steering {
                     graph[e].trade_power_pushing = i;
-                } else {
-                    let calculated =
-                        graph[e].trade_power_pushing / total_trade_steer;
-                    if calculated != i {
-                        println!("Calculated {}, actual {}", calculated, i);
-                    }
                 };
             }
 
