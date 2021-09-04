@@ -14,19 +14,19 @@ type Result<T> = std::result::Result<T, ParseError>;
 // between games (and since I don't own all of them, I can't test all of the
 // issues here).
 
-impl Token {
+impl <Static: StaticAtomSet> Token<Static> {
     /// Convert the token into a string if it can be done.
     pub fn try_to_string(&self) -> Result<&str> {
         match self {
             Self::String(s) => Ok(&s),
             Self::Atom(s) => Ok(&s),
-            t => Err(ParseError::Parse(t.clone()))
+            t => Err(t.clone().into())
         }
     }
 }
 
-impl <Static: StaticAtomSet> From<Token> for Atom<Static> {
-    fn from(t: Token) -> Self {
+impl <S: StaticAtomSet, Static: StaticAtomSet> From<Token<S>> for Atom<Static> {
+    fn from(t: Token<S>) -> Self {
         match t {
             Token::LBrace | Token::RBrace | Token::Eq =>
                 panic!("Shouldn't call this method if it's not a simple value"),
@@ -51,8 +51,8 @@ pub enum ParseError {
     Io(#[from] std::io::Error),
     #[error("lexing error: {0}")]
     Lexer(String),
-    #[error("unexpected token: {0:?}")]
-    Parse(Token),
+    #[error("unexpected token: {0}")]
+    Parse(String),
     #[error("unexpected eof")]
     Eof,
     #[error("error reading type")]
@@ -61,10 +61,16 @@ pub enum ParseError {
     Constraint(String)
 }
 
+impl <S: StaticAtomSet> From<Token<S>> for ParseError {
+    fn from(t: Token<S>) -> Self {
+        Self::Parse(format!("{:?}", t))
+    }
+}
+
 pub struct Parser<'a, G: GameTrait> {
     lexer: &'a mut dyn Lexer<G>,
     depth: u32,
-    saved_token: Option<Token>,
+    saved_token: Option<Token<G::Static>>,
     game_data: &'a mut crate::GameData,
     scope: Vec<String>,
 }
@@ -76,14 +82,14 @@ impl <'a, G: GameTrait> Parser<'a, G> {
     }
 
     pub fn parse_key_scope<F>(&mut self, mut func: F) -> Result<()>
-        where F: FnMut(ParserAtom, &mut Self) -> Result<()>
+        where F: FnMut(Atom<G::Static>, &mut Self) -> Result<()>
     {
         let is_top = self.depth == 0;
         if !is_top {
             match self.get_token()? {
                 Some(Token::LBrace) => {},
                 None => return Err(ParseError::Eof),
-                Some(t) => return Err(ParseError::Parse(t)),
+                Some(t) => return Err(t.into()),
             }
         }
         self.depth += 1;
@@ -91,7 +97,7 @@ impl <'a, G: GameTrait> Parser<'a, G> {
             let key = match self.get_token()? {
                 Some(Token::RBrace) => break false,
                 None => break true,
-                Some(t) => ParserAtom::from(t),
+                Some(t) => Atom::from(t),
             };
             match self.get_token()? {
                 Some(Token::Eq) => {},
@@ -99,7 +105,7 @@ impl <'a, G: GameTrait> Parser<'a, G> {
                     self.unget(Token::LBrace);
                 },
                 None => return Err(ParseError::Eof),
-                Some(t) => return Err(ParseError::Parse(t)),
+                Some(t) => return Err(t.into()),
             }
             self.scope.push(key.as_ref().into());
             //println!("Parsing {}", self.scope.join("/"));
@@ -110,7 +116,7 @@ impl <'a, G: GameTrait> Parser<'a, G> {
         match (hit_eof, is_top) {
             (true, true) | (false, false) => Ok(()),
             (true, false) => Err(ParseError::Eof),
-            (false, true) => Err(ParseError::Parse(Token::RBrace)),
+            (false, true) => Err(Token::<G::Static>::RBrace.into()),
         }
     }
 
@@ -120,7 +126,7 @@ impl <'a, G: GameTrait> Parser<'a, G> {
         match self.get_token()? {
             Some(Token::LBrace) => {},
             None => return Err(ParseError::Eof),
-            Some(t) => return Err(ParseError::Parse(t)),
+            Some(t) => return Err(t.into()),
         }
         self.depth += 1;
         self.scope.push("(with_scope)".into());
@@ -149,7 +155,7 @@ impl <'a, G: GameTrait> Parser<'a, G> {
             })
     }
 
-    pub fn get_token(&mut self) -> Result<Option<Token>> {
+    pub fn get_token(&mut self) -> Result<Option<Token<G::Static>>> {
         if self.saved_token.is_some() {
             Ok(self.saved_token.take())
         } else {
@@ -157,14 +163,14 @@ impl <'a, G: GameTrait> Parser<'a, G> {
         }
     }
 
-    pub fn unget(&mut self, token: Token) {
+    pub fn unget(&mut self, token: Token<G::Static>) {
         assert!(self.saved_token.is_none(), "Can only save one token");
         self.saved_token = Some(token);
     }
 
     pub fn validation_error(&mut self, class_name: &'static str, field: &str,
                             message: &str, fatal: bool,
-                            value: Option<Token>) -> Result<()> {
+                            value: Option<Token<G::Static>>) -> Result<()> {
         let type_hint = match value {
             Some(Token::LBrace) => " (scope)",
             Some(Token::Integer(_)) => " (i32)",
@@ -191,7 +197,7 @@ impl <'a, G: GameTrait> Parser<'a, G> {
     }
 }
 
-pub type ParserAtom = string_cache::DefaultAtom;
+pub type ParserAtom<T> = Atom<<T as GameTrait>::Static>;
 
 /// Load an entire directory of parseable files.
 ///

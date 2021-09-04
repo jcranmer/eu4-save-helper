@@ -2,6 +2,7 @@ use crate::*;
 use std::fs::File;
 use std::io::{Read, Seek};
 use std::path::Path;
+use string_cache::Atom;
 use zip::{ZipArchive, result::ZipError};
 
 impl From<ZipError> for ParseError {
@@ -44,7 +45,7 @@ impl <'a, G: 'static + GameTrait, R: Read + Seek> ZipLexer<'a, G, R> {
 }
 
 impl <G: GameTrait, R: Read + Seek> Lexer<G> for ZipLexer<'_, G, R> {
-    fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
+    fn get_token(&mut self) -> Result<Option<Token<G::Static>>, ParseError> {
         loop {
             match (*self.cur_lexer).get_token()? {
                 None => {
@@ -86,7 +87,7 @@ fn get_lexer<G: 'static + GameTrait>(mut entry: zip::read::ZipFile,
     } else if &magic[3..] == b"bin" {
         Ok(Box::new(BinaryLexer::new(file, entry_name)) as Box::<dyn Lexer<G>>)
     } else {
-        Err(ParseError::Parse(Token::String(String::from_utf8_lossy(&magic).into())))
+        Err(ParseError::Parse(String::from_utf8_lossy(&magic).into()))
     }
 }
 
@@ -166,7 +167,7 @@ pub fn ironmelt(in_path: &Path, out_path: &Path) -> Result<(), ParseError> {
                     is_key = false;
                 },
                 t => {
-                    let as_string = ParserAtom::from(t);
+                    let as_string = Atom::<<DummyTrait as GameTrait>::Static>::from(t);
                     if is_array_known {
                         if is_array {
                             write!(writer, " {}", as_string)?;

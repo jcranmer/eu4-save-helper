@@ -1,13 +1,16 @@
 use byteorder::{ReadBytesExt, LittleEndian};
 use crate::{FixedPoint, GameTrait, ParseError};
+use derivative::Derivative;
 use std::io::Read;
 use std::marker::PhantomData;
+use string_cache::{Atom, StaticAtomSet};
 
 type Result<T> = std::result::Result<T, ParseError>;
 
 /// An individual toker from the lexer.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token {
+#[derive(Derivative)]
+#[derivative(Debug(bound=""), Clone(bound=""), PartialEq(bound=""))]
+pub enum Token<Static: StaticAtomSet> {
     /// The { token
     LBrace,
     /// The } token
@@ -17,10 +20,10 @@ pub enum Token {
     /// A quoted or unquoted string.
     String(String),
     /// A fixed atom (useful for faster parsing).
-    Atom(crate::ParserAtom),
+    Atom(Atom<Static>),
     // Special binary token types. We don't parse these in the text lexer.
     Bool(bool),
-    Fixed(crate::FixedPoint),
+    Fixed(FixedPoint),
     Float(f64),
     Integer(i32),
     Unsigned(u32)
@@ -30,7 +33,7 @@ pub enum Token {
 /// Clausewitz engines.
 pub trait Lexer<G: GameTrait> {
     /// Get the next token. If EOF has been reached, return None instead.
-    fn get_token(&mut self) -> Result<Option<Token>>;
+    fn get_token(&mut self) -> Result<Option<Token<G::Static>>>;
 
     /// Get a displayable name for the current location.
     fn get_location_info(&self) -> String;
@@ -130,7 +133,7 @@ impl <R: Read> TextLexer<R> {
 }
 
 impl <G: GameTrait, R: Read> Lexer<G> for TextLexer<R> {
-    fn get_token(&mut self) -> Result<Option<Token>> {
+    fn get_token(&mut self) -> Result<Option<Token<G::Static>>> {
         loop {
             match self.get_char()? {
                 None => return Ok(None),
@@ -142,7 +145,7 @@ impl <G: GameTrait, R: Read> Lexer<G> for TextLexer<R> {
                 Some(b'"') =>
                     return Ok(Some(Token::String(self.read_qstring()?))),
                 Some(ch) =>
-                    return Ok(Some(Token::String(self.read_unknown(ch)?)))
+                    return Ok(Some(Token::Atom(self.read_unknown(ch)?.into())))
             }
         }
     }
@@ -164,7 +167,7 @@ impl <G: GameTrait, R: Read> BinaryLexer<G, R> {
         BinaryLexer { reader, offset: 0, filename, _trait: PhantomData }
     }
 
-    fn read_token(&mut self) -> Result<Token> {
+    fn read_token(&mut self) -> Result<Token<G::Static>> {
         let code = self.reader.read_u16::<LittleEndian>()?;
         self.offset += 2;
         Ok(match code {
@@ -241,7 +244,7 @@ impl <G: GameTrait, R: Read> BinaryLexer<G, R> {
 }
 
 impl <G: GameTrait, R: Read> Lexer<G> for BinaryLexer<G, R> {
-    fn get_token(&mut self) -> Result<Option<Token>> {
+    fn get_token(&mut self) -> Result<Option<Token<G::Static>>> {
         match self.read_token() {
             Err(ParseError::Io(e))
                     if e.kind() == std::io::ErrorKind::UnexpectedEof => {

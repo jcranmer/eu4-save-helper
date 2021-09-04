@@ -3,7 +3,7 @@ type ProvinceRef = u32; // XXX: LIES
 type RgbColor = Vec<u32>; // XXX: Lies
 
 //include!(concat!(env!("OUT_DIR"), "/eu4_atom.rs"));
-pub type Eu4Atom = paradox::ParserAtom;
+pub type Eu4Atom = paradox::ParserAtom<Eu4Trait>;
 
 pub type Eu4Trait = paradox::DummyTrait;
 

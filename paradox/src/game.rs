@@ -1,3 +1,4 @@
+use derivative::Derivative;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -43,28 +44,29 @@ pub trait BoxedValue: Default {
     const DEFAULT_STRING: &'static str = "";
 }
 
-#[derive(Default, Debug)]
+#[derive(Derivative, Debug)]
+#[derivative(Default(bound=""))]
 pub struct TypeDefinition<T: BoxedValue + ParadoxParse<T::Trait>> {
-    map: HashMap<ParserAtom, usize>,
-    values: Vec<(ParserAtom, T)>
+    map: HashMap<ParserAtom<T::Trait>, usize>,
+    values: Vec<(ParserAtom<T::Trait>, T)>
 }
 
 impl <T: BoxedValue + ParadoxParse<T::Trait>> TypeDefinition<T> {
-    pub fn get_names(&self) -> impl Iterator<Item = &ParserAtom> {
+    pub fn get_names(&self) -> impl Iterator<Item = &ParserAtom<T::Trait>> {
         self.values.iter()
             .map(|(name, _)| name)
     }
 
-    pub fn get_index(&self, name: ParserAtom) -> usize {
+    pub fn get_index(&self, name: ParserAtom<T::Trait>) -> usize {
         *self.map.get(&name).unwrap()
     }
 }
 
-impl <'a, T> std::ops::Index<&'a ParserAtom> for TypeDefinition<T>
+impl <'a, T> std::ops::Index<&'a ParserAtom<T::Trait>> for TypeDefinition<T>
     where T: BoxedValue + ParadoxParse<T::Trait>
 {
     type Output = T;
-    fn index(&self, idx: &'a ParserAtom) -> &T {
+    fn index(&self, idx: &'a ParserAtom<T::Trait>) -> &T {
         &self.values[self.map[idx]].1
     }
 }

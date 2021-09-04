@@ -1,4 +1,4 @@
-use crate::{Date, FixedPoint, GameTrait, Token};
+use crate::{Date, FixedPoint, GameTrait, ParserAtom, Token};
 use crate::parser::*;
 use std::collections::HashMap;
 use std::error::Error as StdError;
@@ -169,7 +169,7 @@ impl <G: GameTrait, T: ParadoxParse<G> + Default> ParadoxParse<G> for HashMap<St
     }
 }
 
-impl <G: GameTrait, T: ParadoxParse<G> + Default> ParadoxParse<G> for HashMap<ParserAtom, T> {
+impl <G: GameTrait, T: ParadoxParse<G> + Default> ParadoxParse<G> for HashMap<ParserAtom<G>, T> {
     fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
         parser.parse_key_scope(|key, parser| {
             let mut val = T::default();
@@ -194,7 +194,7 @@ impl <G: GameTrait> ParadoxParse<G> for () {
                     ().read(parser)
                 })
             },
-            Some(Token::RBrace) => Err(ParseError::Parse(Token::RBrace)),
+            Some(Token::RBrace) => Err(Token::<G::Static>::RBrace.into()),
             Some(_) => Ok(()),
         }
     }
