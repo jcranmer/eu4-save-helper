@@ -1,4 +1,4 @@
-use crate::{Lexer, TextLexer, Token};
+use crate::{GameTrait, Lexer, TextLexer, Token};
 use std::fs::File;
 use std::path::Path;
 use thiserror::Error;
@@ -19,7 +19,7 @@ impl Token {
     pub fn try_to_string(&self) -> Result<&str> {
         match self {
             Self::String(s) => Ok(&s),
-            Self::Interned(s) => Ok(&s),
+            Self::Atom(s) => Ok(&s),
             t => Err(ParseError::Parse(t.clone()))
         }
     }
@@ -31,7 +31,7 @@ impl <Static: StaticAtomSet> From<Token> for Atom<Static> {
             Token::LBrace | Token::RBrace | Token::Eq =>
                 panic!("Shouldn't call this method if it's not a simple value"),
             Token::String(s) => Self::from(s),
-            Token::Interned(s) => Self::from(s),
+            Token::Atom(s) => Self::from(s.as_ref()),
             Token::Bool(b) => Self::from(if b { "yes" } else { "no" }),
             Token::Fixed(f) => f.to_string().into(),
             Token::Float(f) => f.to_string().into(),
@@ -41,8 +41,8 @@ impl <Static: StaticAtomSet> From<Token> for Atom<Static> {
     }
 }
 
-pub trait ParadoxParse {
-    fn read(&mut self, parser: &mut Parser) -> Result<()>;
+pub trait ParadoxParse<G: GameTrait> {
+    fn read(&mut self, parser: &mut Parser<G>) -> Result<()>;
 }
 
 #[derive(Error, Debug)]
@@ -61,18 +61,18 @@ pub enum ParseError {
     Constraint(String)
 }
 
-pub struct Parser<'a> {
-    lexer: &'a mut dyn Lexer,
+pub struct Parser<'a, G: GameTrait> {
+    lexer: &'a mut dyn Lexer<G>,
     depth: u32,
     saved_token: Option<Token>,
     game_data: &'a mut crate::GameData,
     scope: Vec<String>,
 }
 
-impl <'a> Parser<'a> {
-    pub fn new(lexer: &'a mut dyn Lexer,
-               game_data: &'a mut crate::GameData) -> Parser<'a> {
-        Parser { lexer, depth: 0, saved_token: None, game_data, scope: Vec::new() }
+impl <'a, G: GameTrait> Parser<'a, G> {
+    pub fn new(lexer: &'a mut dyn Lexer<G>,
+               game_data: &'a mut crate::GameData) -> Self {
+        Self { lexer, depth: 0, saved_token: None, game_data, scope: Vec::new() }
     }
 
     pub fn parse_key_scope<F>(&mut self, mut func: F) -> Result<()>
@@ -141,7 +141,7 @@ impl <'a> Parser<'a> {
         self.game_data
     }
 
-    pub fn parse(mut self, result: &mut dyn ParadoxParse) -> Result<()> {
+    pub fn parse(mut self, result: &mut dyn ParadoxParse<G>) -> Result<()> {
         result.read(&mut self)
             .or_else(|err| {
                 eprintln!("Error at {}", self.lexer.get_location_info());
@@ -173,7 +173,7 @@ impl <'a> Parser<'a> {
             Some(Token::Fixed(_)) => " (FixedPoint)",
             Some(Token::Bool(_)) => " (bool)",
             Some(Token::String(_)) => " (String)",
-            Some(Token::Interned(_)) => " (String)",
+            Some(Token::Atom(_)) => " (String)",
             _ => "",
         };
         let msg = format!("{}/{}{}: {}", class_name, field, type_hint, message);
@@ -196,8 +196,10 @@ pub type ParserAtom = string_cache::DefaultAtom;
 /// Load an entire directory of parseable files.
 ///
 /// All of the entries will be loaded in alphabetical order.
-pub fn load_directory(path: &Path, data: &mut dyn ParadoxParse,
-                      gamedata: &mut crate::GameData) -> Result<()> {
+pub fn load_directory<G: GameTrait>(
+    path: &Path, data: &mut dyn ParadoxParse<G>,
+    gamedata: &mut crate::GameData) -> Result<()>
+{
     let mut files : Vec<_> = Default::default();
     if path.is_dir() {
         for entry in path.read_dir()? {

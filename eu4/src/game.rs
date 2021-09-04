@@ -59,6 +59,7 @@ macro_rules! impl_box {
     ($boxed_ty:ty, $id:literal) => { impl_box!($boxed_ty, $id, ""); };
     ($boxed_ty:ty, $id:literal, $default:literal) => {
         impl BoxedValue for $boxed_ty {
+            type Trait = crate::Eu4Trait;
             const TYPE_VALUE: u32 = $id;
             const DEFAULT_STRING: &'static str = $default;
         }

@@ -5,6 +5,8 @@ type RgbColor = Vec<u32>; // XXX: Lies
 //include!(concat!(env!("OUT_DIR"), "/eu4_atom.rs"));
 pub type Eu4Atom = paradox::ParserAtom;
 
+pub type Eu4Trait = paradox::DummyTrait;
+
 #[macro_export]
 macro_rules! eu4_atom {
     ($l:literal) => (crate::Eu4Atom::from($l))

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 use std::path::{Path, PathBuf};
-use crate::{ParadoxParse, ParseError, Parser, ParserAtom};
+use crate::{GameTrait, ParadoxParse, ParseError, Parser, ParserAtom};
 
 type Result<T> = std::result::Result<T, ParseError>;
 
@@ -28,25 +28,28 @@ impl GameData {
     }
 
     /// Parse a directory (usually in $GAME/common/*.txt) into a parsable type.
-    pub fn parse_directory(&mut self, path: &str,
-                           target: &mut dyn ParadoxParse) -> Result<&mut Self> {
+    pub fn parse_directory<G: GameTrait>(
+        &mut self, path: &str,
+        target: &mut dyn ParadoxParse<G>) -> Result<&mut Self>
+    {
         crate::load_directory(&self.game_directory.join(path), target, self)?;
         Ok(self)
     }
 }
 
 pub trait BoxedValue: Default {
+    type Trait : GameTrait;
     const TYPE_VALUE: u32;
     const DEFAULT_STRING: &'static str = "";
 }
 
 #[derive(Default, Debug)]
-pub struct TypeDefinition<T: BoxedValue + ParadoxParse> {
+pub struct TypeDefinition<T: BoxedValue + ParadoxParse<T::Trait>> {
     map: HashMap<ParserAtom, usize>,
     values: Vec<(ParserAtom, T)>
 }
 
-impl <T: BoxedValue + ParadoxParse> TypeDefinition<T> {
+impl <T: BoxedValue + ParadoxParse<T::Trait>> TypeDefinition<T> {
     pub fn get_names(&self) -> impl Iterator<Item = &ParserAtom> {
         self.values.iter()
             .map(|(name, _)| name)
@@ -58,7 +61,7 @@ impl <T: BoxedValue + ParadoxParse> TypeDefinition<T> {
 }
 
 impl <'a, T> std::ops::Index<&'a ParserAtom> for TypeDefinition<T>
-    where T: BoxedValue + ParadoxParse
+    where T: BoxedValue + ParadoxParse<T::Trait>
 {
     type Output = T;
     fn index(&self, idx: &'a ParserAtom) -> &T {
@@ -66,8 +69,8 @@ impl <'a, T> std::ops::Index<&'a ParserAtom> for TypeDefinition<T>
     }
 }
 
-impl <T: BoxedValue + ParadoxParse> ParadoxParse for TypeDefinition<T> {
-    fn read(&mut self, parser: &mut Parser) -> Result<()> {
+impl <T: BoxedValue + ParadoxParse<T::Trait>> ParadoxParse<T::Trait> for TypeDefinition<T> {
+    fn read(&mut self, parser: &mut Parser<T::Trait>) -> Result<()> {
         parser.parse_key_scope(|key, parser| {
             let index = self.values.len();
             if self.map.insert(key.clone(), index).is_some() {

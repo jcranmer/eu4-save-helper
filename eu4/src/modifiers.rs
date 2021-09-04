@@ -1,4 +1,4 @@
-use crate::Eu4Atom;
+use crate::{Eu4Atom, Eu4Trait};
 use paradox::{FixedPoint, ParadoxParse, Parser, ParseError};
 
 /*paradox::modifier_list! {
@@ -528,7 +528,7 @@ pub struct Modifiers {
 
 impl Modifiers {
     pub fn read_field(&mut self, key: Eu4Atom,
-                      parser: &mut Parser) -> Result<(), ParseError> {
+                      parser: &mut Parser<Eu4Trait>) -> Result<(), ParseError> {
         let value = parser.get_token()?.ok_or(ParseError::Eof)?;
         let str_value = value.try_to_string()?;
         let value = if str_value == "yes" {
@@ -585,8 +585,8 @@ impl core::ops::IndexMut<&'_ Eu4Atom> for Modifiers {
     }
 }
 
-impl ParadoxParse for Modifiers {
-    fn read(&mut self, parser: &mut Parser) -> Result<(), ParseError> {
+impl ParadoxParse<Eu4Trait> for Modifiers {
+    fn read(&mut self, parser: &mut Parser<Eu4Trait>) -> Result<(), ParseError> {
         parser.parse_key_scope(|key, parser| {
             self.read_field(key, parser)
         })

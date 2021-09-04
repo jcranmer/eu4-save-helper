@@ -1,5 +1,4 @@
 use crate::*;
-use byteorder::{ReadBytesExt, LittleEndian};
 use std::fs::File;
 use std::io::{Read, Seek};
 use std::path::Path;
@@ -14,116 +13,14 @@ impl From<ZipError> for ParseError {
     }
 }
 
-struct BinaryLexer<R: Read> {
-    filename: String,
-    offset: u32,
-    reader: R,
-}
-
-impl <R: Read> BinaryLexer<R> {
-    fn new(reader: R, filename: String) -> Self {
-        BinaryLexer { reader, offset: 0, filename }
-    }
-
-    fn read_token(&mut self) -> Result<Token, ParseError> {
-        let code = self.reader.read_u16::<LittleEndian>()?;
-        self.offset += 2;
-        Ok(match code {
-            0x0001 => Token::Eq,
-            0x0003 => Token::LBrace,
-            0x0004 => Token::RBrace,
-            0x000b => Token::Interned("id"),
-            0x000c => {
-                let val = self.reader.read_i32::<LittleEndian>()?;
-                self.offset += 4;
-                Token::Integer(val)
-            },
-            0x000d => {
-                // Fixed point notation.
-                let val = self.reader.read_i32::<LittleEndian>()?;
-                self.offset += 4;
-                Token::Fixed(FixedPoint(val))
-            },
-            0x000e => {
-                let val = self.reader.read_u8()?;
-                self.offset += 1;
-                match val {
-                    0 => Token::Bool(false),
-                    1 => Token::Bool(true),
-                    _ => return Err(ParseError::Lexer(val.to_string()))
-                }
-            },
-            0x000f | 0x0017 => {
-                let len = self.reader.read_u16::<LittleEndian>()? as usize;
-                self.offset += 2;
-                let mut data = Vec::with_capacity(len);
-                data.resize(len, 0);
-                self.reader.read_exact(&mut data)?;
-                self.offset += len as u32;
-                let string = data.iter().map(|&ch| ch as char).collect();
-                Token::String(string)
-            },
-            0x0014 => {
-                let val = self.reader.read_u32::<LittleEndian>()?;
-                self.offset += 4;
-                Token::Unsigned(val)
-            },
-            0x001b => {
-                Token::Interned("name")
-            },
-            0x0167 => {
-                // A fixed point number, with a base of 1 << 16.
-                let val = self.reader.read_i64::<LittleEndian>()?;
-                self.offset += 8;
-                // As long as the mantissa is small enough, we can represent
-                // this number exactly in a double-precision floating-point
-                // number.
-                let mantissa_size = 64 - val.abs().leading_zeros();
-                if mantissa_size > std::f64::MANTISSA_DIGITS + 1 {
-                    return Err(ParseError::Lexer(format!("{:016x}", val)));
-                }
-                // Converting to double-precision and then doing a fdiv is the
-                // easiest way to do the conversion. Both steps are exact, if we
-                // do not fail the above test. We might get a slight speed boost
-                // by doing the exponent/mantissa manipulation ourselves, but
-                // it's not worth the code complexity.
-                let val = (val as f64) / 65536.0;
-                Token::Float(val)
-            },
-            0x0020..=0xffff => {
-                let s = include!("binary_tokens.rs");
-                Token::Interned(s)
-            },
-            _ => panic!("Unknown code: {:4x}", code)
-        })
-    }
-}
-
-impl <R: Read> Lexer for BinaryLexer<R> {
-    fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
-        match self.read_token() {
-            Err(ParseError::Io(e))
-                    if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                Ok(None)
-            },
-            Err(e) => Err(e),
-            Ok(t) => Ok(Some(t))
-        }
-    }
-
-    fn get_location_info(&self) -> String {
-        format!("{}:{:08x}", self.filename, self.offset)
-    }
-}
-
-struct ZipLexer<'a, R: Read + Seek> {
+struct ZipLexer<'a, G: 'static + GameTrait, R: Read + Seek> {
     archive: &'a mut ZipArchive<R>,
     path: &'a Path,
     cur_index: usize,
-    cur_lexer: Box<dyn Lexer>
+    cur_lexer: Box<dyn Lexer<G>>
 }
 
-impl <'a, R: Read + Seek> ZipLexer<'a, R> {
+impl <'a, G: 'static + GameTrait, R: Read + Seek> ZipLexer<'a, G, R> {
     fn new(archive: &'a mut ZipArchive<R>,
            path: &'a Path) -> Result<Self, ParseError> {
         let entry = archive.by_index(0)?;
@@ -146,7 +43,7 @@ impl <'a, R: Read + Seek> ZipLexer<'a, R> {
     }
 }
 
-impl <R: Read + Seek> Lexer for ZipLexer<'_, R> {
+impl <G: GameTrait, R: Read + Seek> Lexer<G> for ZipLexer<'_, G, R> {
     fn get_token(&mut self) -> Result<Option<Token>, ParseError> {
         loop {
             match (*self.cur_lexer).get_token()? {
@@ -169,8 +66,8 @@ impl <R: Read + Seek> Lexer for ZipLexer<'_, R> {
     }
 }
 
-fn get_lexer(mut entry: zip::read::ZipFile,
-             path: &Path) -> Result<Box<dyn Lexer>, ParseError> {
+fn get_lexer<G: 'static + GameTrait>(mut entry: zip::read::ZipFile,
+             path: &Path) -> Result<Box<dyn Lexer<G>>, ParseError> {
     let entry_name = format!("{}/{}", path.display(), entry.name());
 
     // Read the first 6 bytes, to determine if it's a text or binary file.
@@ -185,15 +82,16 @@ fn get_lexer(mut entry: zip::read::ZipFile,
 
     // Use the magic bytes to choose a text or a binary lexer.
     if &magic[3..] == b"txt" {
-        Ok(Box::new(TextLexer::new(file, entry_name)) as Box::<dyn Lexer>)
+        Ok(Box::new(TextLexer::new(file, entry_name)) as Box::<dyn Lexer<G>>)
     } else if &magic[3..] == b"bin" {
-        Ok(Box::new(BinaryLexer::new(file, entry_name)) as Box::<dyn Lexer>)
+        Ok(Box::new(BinaryLexer::new(file, entry_name)) as Box::<dyn Lexer<G>>)
     } else {
         Err(ParseError::Parse(Token::String(String::from_utf8_lossy(&magic).into())))
     }
 }
 
-pub fn load_savegame<T: ParadoxParse + Default>(path: &Path, game_data: &mut GameData)
+pub fn load_savegame<G: 'static + GameTrait, T: ParadoxParse<G> + Default>(
+    path: &Path, game_data: &mut GameData)
         -> Result<T, ParseError> {
     let mut archive = ZipArchive::new(File::open(path)?)?;
     let mut lexer = ZipLexer::new(&mut archive, path)?;
@@ -219,7 +117,7 @@ pub fn ironmelt(in_path: &Path, out_path: &Path) -> Result<(), ParseError> {
         writer.start_file(name, file_opts)?;
         writeln!(writer, "EU4txt")?;
 
-        let mut lexer = get_lexer(entry, in_path)?;
+        let mut lexer = get_lexer::<DummyTrait>(entry, in_path)?;
         let mut is_array = false;
         let mut is_key = true;
         let mut is_array_known = true;

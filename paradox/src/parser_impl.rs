@@ -1,4 +1,4 @@
-use crate::{Date, FixedPoint, Token};
+use crate::{Date, FixedPoint, GameTrait, Token};
 use crate::parser::*;
 use std::collections::HashMap;
 use std::error::Error as StdError;
@@ -15,8 +15,8 @@ fn convert_err<T, E: StdError + 'static>(val: Result<T, E>)
 
 macro_rules! from_string {
     {$T:ty} => {
-        impl ParadoxParse for $T {
-            fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        impl <G: GameTrait> ParadoxParse<G> for $T {
+            fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
                 let val = parser.get_token()?.ok_or(ParseError::Eof)?;
                 *self = convert_err(<$T>::from_str(val.try_to_string()?))?;
                 Ok(())
@@ -24,8 +24,8 @@ macro_rules! from_string {
         }
     };
     {$T:ty, $arm:ident} => {
-        impl ParadoxParse for $T {
-            fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        impl <G: GameTrait> ParadoxParse<G> for $T {
+            fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
                 let val = parser.get_token()?.ok_or(ParseError::Eof)?;
                 if let Token::$arm(val) = val {
                     *self = val;
@@ -45,8 +45,8 @@ from_string!{f64, Float}
 from_string!{String}
 from_string!{FixedPoint, Fixed}
 
-impl ParadoxParse for Date {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+impl <G: GameTrait> ParadoxParse<G> for Date {
+    fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
         let val = parser.get_token()?.ok_or(ParseError::Eof)?;
         if let Token::Integer(val) = val {
             *self = crate::date::convert_date(val as u32);
@@ -57,8 +57,8 @@ impl ParadoxParse for Date {
     }
 }
 
-impl <Static: StaticAtomSet> ParadoxParse for Atom<Static> {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+impl <G: GameTrait, Static: StaticAtomSet> ParadoxParse<G> for Atom<Static> {
+    fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
         let val = parser.get_token()?.ok_or(ParseError::Eof)?;
         *self = Self::from(val);
         Ok(())
@@ -67,8 +67,8 @@ impl <Static: StaticAtomSet> ParadoxParse for Atom<Static> {
 
 macro_rules! impl_array {
     {$len:expr} => {
-        impl <T: ParadoxParse> ParadoxParse for [T; $len] {
-            fn read(&mut self, parser: &mut Parser) -> ParseResult {
+        impl <G: GameTrait, T: ParadoxParse<G>> ParadoxParse<G> for [T; $len] {
+            fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
                 let mut i = 0;
                 let class_name = std::any::type_name::<Self>();
                 parser.with_scope(|parser| {
@@ -124,8 +124,8 @@ impl_array!{30}
 impl_array!{31}
 impl_array!{32}
 
-impl ParadoxParse for bool {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+impl <G: GameTrait> ParadoxParse<G> for bool {
+    fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
         let val = parser.get_token()?.ok_or(ParseError::Eof)?;
         if let Token::Bool(b) = val {
             *self = b;
@@ -144,8 +144,8 @@ impl ParadoxParse for bool {
     }
 }
 
-impl <T: ParadoxParse + Default> ParadoxParse for Vec<T> {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+impl <G: GameTrait, T: ParadoxParse<G> + Default> ParadoxParse<G> for Vec<T> {
+    fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
         parser.with_scope(|parser| {
             let mut value = T::default();
             value.read(parser)?;
@@ -155,19 +155,8 @@ impl <T: ParadoxParse + Default> ParadoxParse for Vec<T> {
     }
 }
 
-impl <T: ParadoxParse + Default> ParadoxParse for Vec<(ParserAtom, T)> {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
-        parser.parse_key_scope(|key, parser| {
-            let mut value = T::default();
-            value.read(parser)?;
-            self.push((key, value));
-            Ok(())
-        })
-    }
-}
-
-impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+impl <G: GameTrait, T: ParadoxParse<G> + Default> ParadoxParse<G> for HashMap<String, T> {
+    fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
         parser.parse_key_scope(|key, parser| {
             let mut val = T::default();
             val.read(parser)?;
@@ -180,8 +169,8 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<String, T> {
     }
 }
 
-impl <T: ParadoxParse + Default> ParadoxParse for HashMap<ParserAtom, T> {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+impl <G: GameTrait, T: ParadoxParse<G> + Default> ParadoxParse<G> for HashMap<ParserAtom, T> {
+    fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
         parser.parse_key_scope(|key, parser| {
             let mut val = T::default();
             val.read(parser)?;
@@ -195,8 +184,8 @@ impl <T: ParadoxParse + Default> ParadoxParse for HashMap<ParserAtom, T> {
     }
 }
 
-impl ParadoxParse for () {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+impl <G: GameTrait> ParadoxParse<G> for () {
+    fn read(&mut self, parser: &mut Parser<G>) -> ParseResult {
         match parser.get_token()? {
             None => Err(ParseError::Eof),
             Some(Token::LBrace) => {

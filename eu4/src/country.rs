@@ -1,4 +1,4 @@
-use crate::Eu4Atom;
+use crate::{Eu4Atom, Eu4Trait};
 use paradox::{ParadoxParse, ParseError, Parser};
 use std::collections::HashMap;
 
@@ -7,8 +7,8 @@ type ParseResult = Result<(), ParseError>;
 #[derive(Default)]
 pub struct CountryMap(HashMap<Eu4Atom, Country>);
 
-impl ParadoxParse for CountryMap {
-    fn read(&mut self, parser: &mut Parser) -> ParseResult {
+impl ParadoxParse<Eu4Trait> for CountryMap {
+    fn read(&mut self, parser: &mut Parser<Eu4Trait>) -> ParseResult {
         parser.parse_key_scope(|key, parser| {
             let mut filename = String::default();
             filename.read(parser)?;

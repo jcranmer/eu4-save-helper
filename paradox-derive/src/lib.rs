@@ -120,7 +120,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
     let body = {
         // Regular types. Build up a check here.
         let parsee = quote_spanned!{field.span() =>
-            let parsee : &mut dyn paradox::ParadoxParse
+            let parsee : &mut dyn paradox::ParadoxParse<crate::Eu4Trait>
         };
         let get_parsee = if has_tag(field, "repeated") {
             quote_spanned!{field.span() =>
@@ -145,6 +145,7 @@ fn handle_field<'a>(field: &'a Field) -> FieldHandler<'a> {
 }
 
 fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
+    let trait_name = quote! { crate::Eu4Trait };
     let name = &input.ident;
     let body : Vec<_> = match &input.data {
         Data::Struct(data) => data.fields.iter().map(handle_field).collect(),
@@ -183,8 +184,8 @@ fn implement_parse_method(input: &DeriveInput) -> Result<TokenStream, Error> {
 
     let expanded = quote! {
         #[automatically_derived]
-        impl paradox::ParadoxParse for #name {
-            fn read(&mut self, parser: &mut paradox::Parser)
+        impl paradox::ParadoxParse<#trait_name> for #name {
+            fn read(&mut self, parser: &mut paradox::Parser<#trait_name>)
                     -> Result<(), paradox::ParseError> {
                 let class_name = std::any::type_name::<Self>();
                 #( #prologue )*

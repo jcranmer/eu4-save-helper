@@ -60,7 +60,8 @@ pub(crate) fn implement_game(input: &DeriveInput) -> Result<TokenStream, Error> 
         .map(|(name, _)| quote! { #name: Default::default() });
     let new_fields_parse = eager_fields.iter()
         .map(|(name, path)| quote! {
-            result.#base_field.parse_directory(#path, &mut result.#name)?;
+            result.#base_field
+                .parse_directory::<crate::Eu4Trait>(#path, &mut result.#name)?;
         });
     let new_method = quote_spanned! { input.span() =>
         pub fn new(game_dir: &std::path::Path
