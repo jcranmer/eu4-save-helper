@@ -164,9 +164,9 @@ pub struct HreInfo {
     #[repeated] pub passed_reform: Vec<Eu4Atom>,
     pub continent: u32,
     pub imperial_ban_allowed: bool,
-    pub internal_hre_crb: bool,
+    pub internal_hre_cb: bool,
     pub hre_inheritable: bool,
-    pub allows_famle_emperor: bool,
+    pub allows_female_emperor: bool,
     pub emperor_has_revoked: bool,
     pub electors: Vec<CountryRef>,
     pub emperor_previous_rank: u32,
@@ -557,7 +557,7 @@ impl Country {
                 mods.add_scaled_modifiers(modifier, $e);
             };
         }
-        mods.add_modifiers(&static_mod[&eu4_atom!("base_values")].modifiers);
+        mods.add_modifiers(&static_mod[&Eu4Atom::from("base_values")].modifiers);
         // XXX: war_taxes
         apply_static!(scaled stability);
         apply_static!(+/- stability);
@@ -603,7 +603,7 @@ impl Country {
         for trade_league in &gamestate.trade_league {
             if &trade_league.members[0] == tag {
                 mods.add_scaled_modifiers(
-                    &static_mod[&eu4_atom!("scaled_trade_league_leader")].modifiers,
+                    &static_mod[&Eu4Atom::from("scaled_trade_league_leader")].modifiers,
                     (trade_league.members.len() as i32).into());
             }
             if trade_league.members.contains(tag) {

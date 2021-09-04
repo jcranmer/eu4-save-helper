@@ -102,7 +102,7 @@ pub fn load_savegame<G: 'static + GameTrait, T: ParadoxParse<G> + Default>(
     Ok(gamestate)
 }
 
-pub fn ironmelt(in_path: &Path, out_path: &Path) -> Result<(), ParseError> {
+pub fn ironmelt<G: 'static + GameTrait>(in_path: &Path, out_path: &Path) -> Result<(), ParseError> {
     use std::io::Write;
     use zip::ZipWriter;
     use zip::write::FileOptions;
@@ -118,7 +118,7 @@ pub fn ironmelt(in_path: &Path, out_path: &Path) -> Result<(), ParseError> {
         writer.start_file(name, file_opts)?;
         writeln!(writer, "EU4txt")?;
 
-        let mut lexer = get_lexer::<DummyTrait>(entry, in_path)?;
+        let mut lexer = get_lexer::<G>(entry, in_path)?;
         let mut is_array = false;
         let mut is_key = true;
         let mut is_array_known = true;
@@ -167,7 +167,7 @@ pub fn ironmelt(in_path: &Path, out_path: &Path) -> Result<(), ParseError> {
                     is_key = false;
                 },
                 t => {
-                    let as_string = Atom::<<DummyTrait as GameTrait>::Static>::from(t);
+                    let as_string = Atom::<G::Static>::from(t);
                     if is_array_known {
                         if is_array {
                             write!(writer, " {}", as_string)?;

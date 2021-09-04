@@ -29,7 +29,7 @@ pub use parser::*;
 pub use save::*;
 
 use std::path::PathBuf;
-use string_cache::{Atom, EmptyStaticAtomSet, StaticAtomSet};
+use string_cache::{Atom, StaticAtomSet};
 
 #[cfg(unix)]
 pub fn get_default_steam_dir() -> PathBuf {
@@ -69,14 +69,4 @@ pub trait GameTrait {
     type Static: StaticAtomSet;
 
     fn get_binary_token(id: u16) -> Option<Atom<Self::Static>>;
-}
-
-pub struct DummyTrait;
-impl GameTrait for DummyTrait {
-    type Static = EmptyStaticAtomSet;
-    
-    fn get_binary_token(code: u16) -> Option<Atom<Self::Static>> {
-        let s = include!("binary_tokens.rs");
-        Some(s.into())
-    }
 }

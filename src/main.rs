@@ -9,7 +9,7 @@ mod trade;
 fn main() -> Result<(), paradox::ParseError> {
     let mut eu4data = eu4::GameData::new(
         &paradox::get_default_steam_dir().join("Europa Universalis IV"))?;
-    let gamestate = paradox::load_savegame::<paradox::DummyTrait, eu4::Gamestate>(
+    let gamestate = paradox::load_savegame::<eu4::Eu4Trait, eu4::Gamestate>(
         &std::path::Path::new("/tmp/TrailOfTears.eu4-37"),
 //        &paradox::get_default_save_dir().join("Europa Universalis IV/save games/Mamluks.eu4"),
         &mut eu4data.base_info
