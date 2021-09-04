@@ -148,6 +148,7 @@ pub struct AppliedModifiers {
     pub date: Date,
     #[optional] pub hidden: bool,
     #[optional] pub ruler_modifier: bool,
+    #[optional] pub parliament_modifier: bool,
 }
 
 #[derive(ParadoxParse, Default)]
@@ -409,7 +410,7 @@ pub struct Country {
     #[optional] pub active_religious_reform: (),
     #[optional] pub active_native_advancement: (),
     #[repeated] pub advisor: Vec<()>,
-    #[optional] pub government: (),
+    #[optional] pub government: CountryGovernment,
     #[optional] pub merchants: (),
     #[optional] pub missionaries: (),
     #[optional] pub diplomats: (),
@@ -600,6 +601,16 @@ impl Country {
         apply_static!(scaled 100 innovativeness);
 
         // More complex static modifiers
+        for subject_tag in &self.subjects {
+            let subject = &gamestate.countries[subject_tag];
+            if subject.colonial_parent == *tag {
+                if subject.num_of_cities >= 10 {
+                    apply_static!(large_colonial_nation);
+                }
+                // XXX: colony type modifiers...
+            }
+        }
+
         for trade_league in &gamestate.trade_league {
             if &trade_league.members[0] == tag {
                 mods.add_scaled_modifiers(
@@ -613,12 +624,36 @@ impl Country {
         }
 
         // XXX: more static modifiers
+
+        // Ideas, policies.
         for (idea_group_name, &idea_count) in &self.active_idea_groups {
             data.idea_groups[idea_group_name]
                 .add_idea_modifiers(idea_count, &mut mods);
         }
+        for policy in &self.active_policy {
+            mods.add_modifiers(&data.policies[&policy.policy].modifiers);
+        }
+
+        // Government
+        // XXX: government rank
+        for reform in &self.government.reform_stack.reforms {
+            mods.add_modifiers(&data.government_reforms[&reform].modifiers);
+        }
+        // XXX: estates, factions, estate privileges
+        // XXX: advisors
+
         // XXX: techs
         // XXX: religion (+ancestors, cults, etc.)
+
+        // XXX: tradegoods
+        // XXX: monarch whatevers
+        // XXX: naval doctrine
+        // XXX: great projects
+        // XXX: ruler personality
+        // XXX: age bonus
+        // XXX: disasters
+
+        // Load all of the modifiers from events.
         for modifier in &self.modifier {
             for map in &[&data.event_modifiers, &data.static_modifiers] {
                 if let Some(val) = map.get(&modifier.modifier) {
@@ -627,21 +662,27 @@ impl Country {
                 }
             }
         }
-        for policy in &self.active_policy {
-            mods.add_modifiers(&data.policies[&policy.policy].modifiers);
-        }
-        // XXX: tradegoods
-        // XXX: advisors
-        // XXX: government rank, government reforms
-        // XXX: monarch whatevers
-        // XXX: naval doctrine
-        // XXX: great projects
-        // XXX: estates, factions
-        // XXX: ruler personality
-        // XXX: age bonus
-        // XXX: disasters
+
         mods
     }
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct CountryGovernment {
+    government: Eu4Atom,
+    reform_stack: CountryReformStack,
+    #[optional] cossacks_mechanic: (),
+    #[optional] feudal_theocracy_mechanic: (),
+    #[optional] iqta_mechanic: (),
+    #[optional] mamluk_mechanic: (),
+    #[optional] russian_mechanic: (),
+    #[optional] tribal_federation_mechanic: (),
+}
+
+#[derive(ParadoxParse, Default)]
+pub struct CountryReformStack {
+    reforms: Vec<Eu4Atom>,
+    #[optional] history: Vec<Eu4Atom>,
 }
 
 #[derive(ParadoxParse, Default)]

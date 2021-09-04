@@ -16,6 +16,13 @@ fn main() -> Result<(), paradox::ParseError> {
         )?;
     trade::optimize_trade(&eu4data, &gamestate,
                           gamestate.player.as_ref());
+    // Debugging: trade power for everybody
+    //for (tag, country) in &gamestate.countries {
+    //    if country.num_of_cities == 0 { continue; }
+    //    let modifiers = country.get_modifiers(&eu4data, &gamestate, &tag);
+    //    println!("{} global_prov_trade_power_modifier = {:?}", tag,
+    //             modifiers[&eu4::eu4_atom!("global_prov_trade_power_modifier")]);
+    //}
     //let country = &gamestate.countries[&gamestate.player];
     //let modifiers = country.get_modifiers(&eu4data, &gamestate, &gamestate.player);
     //for (key, value) in modifiers.modifiers {

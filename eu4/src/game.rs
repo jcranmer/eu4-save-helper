@@ -45,11 +45,17 @@ pub struct GameData {
     #[parse = "common/tradenodes"]
     pub trade: TypeDefinition<crate::TradeNode>,
 
+    #[parse = "common/trading_policies"]
+    pub trade_policy: TypeDefinition<crate::TradePolicy>,
+
     #[parse = "common/static_modifiers"]
     pub static_modifiers: HashMap<Eu4Atom, crate::EventModifier>,
 
     #[parse = "common/event_modifiers"]
     pub event_modifiers: HashMap<Eu4Atom, crate::EventModifier>,
+
+    #[parse = "common/government_reforms"]
+    pub government_reforms: TypeDefinition<crate::GovernmentReform>,
 
     //#[parse = "events"]
     //events: crate::EventList,
@@ -78,6 +84,8 @@ impl_box!(crate::TradeNode, 9);
 impl_box!(crate::Climate, 10);
 impl_box!(crate::TradeGood, 11, "nogoods");
 impl_box!(crate::AdvisorType, 12);
+impl_box!(crate::GovernmentReform, 13);
 impl_box!(crate::IdeaGroup, 14);
 impl_box!(crate::EventModifier, 15);
 impl_box!(crate::Policy, 16);
+impl_box!(crate::TradePolicy, 17);

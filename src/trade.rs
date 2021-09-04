@@ -5,6 +5,32 @@ use petgraph::visit::{EdgeRef, Topo, Walker};
 use petgraph::Direction::Outgoing;
 use std::collections::HashMap;
 
+// XXX: move this elsewhere
+struct ModifierCache<'a> {
+    gamedata: &'a GameData,
+    gamestate: &'a Gamestate,
+    cache: std::cell::RefCell<HashMap<Eu4Atom, eu4::Modifiers>>
+}
+
+impl <'a> ModifierCache<'a> {
+    pub fn new(gamedata: &'a GameData, gamestate: &'a Gamestate) -> Self {
+        Self {
+            gamedata, gamestate,
+            cache: std::cell::RefCell::new(Default::default())
+        }
+    }
+
+    pub fn get_modifier(&self, country: &Eu4Atom,
+                        modifier: &Eu4Atom) -> FixedPoint {
+        self.cache.borrow_mut()
+            .entry(country.clone())
+            .or_insert_with(|| {
+                self.gamestate.countries[country]
+                    .get_modifiers(self.gamedata, self.gamestate, &country)
+            })[modifier].as_fixed_point()
+    }
+}
+
 // Trade steering notes:
 // This isn't saved in the save file anywhere, it looks like, has to be
 // recomputed from scratch. (Nor is it readily available in UI, for that
@@ -22,6 +48,7 @@ struct SimpleTradeNode {
     our_steer_modifier: FixedPoint,
     has_steering: bool,
     trade_efficiency: FixedPoint,
+    trade_power_modifier: FixedPoint,
 }
 
 impl SimpleTradeNode {
@@ -56,7 +83,7 @@ struct TradeNetwork {
 }
 
 impl TradeNetwork {
-    fn new(data: &GameData, gamestate: &Gamestate, us: &str) -> Self {
+    fn new(data: &GameData, gamestate: &Gamestate, us: &Eu4Atom) -> Self {
         // Build the graph structure from the game data.
         let names : Vec<_> = data.trade.get_names()
             .map(|name| name.clone())
@@ -82,16 +109,18 @@ impl TradeNetwork {
         }
 
         // Cache for getting modifier information from a country.
-        let mut modifier_cache = HashMap::new();
-        let mut get_trade_steering = |country: &Eu4Atom| {
-            let modifiers = modifier_cache.entry(country.clone())
-                .or_insert_with(|| {
-                    gamestate.countries[country]
-                        .get_modifiers(data, gamestate, &country)
-                });
-            modifiers[&eu4_atom!("trade_steering")]
-                .as_fixed_point() + FixedPoint::ONE
+        let modifier_cache = ModifierCache::new(data, gamestate);
+        let get_trade_steering = |country: &Eu4Atom| {
+            modifier_cache.get_modifier(country, &eu4_atom!("trade_steering"))
+                + FixedPoint::ONE
         };
+        //let global_trade_power =
+        //    modifier_cache.get_modifier(us, &eu4_atom!("global_trade_power"));
+        //let domestic_trade_power = modifier_cache.get_modifier(us,
+        //    &eu4_atom!("global_own_trade_power"));
+        //let foreign_trade_power = modifier_cache.get_modifier(us,
+        //    &eu4_atom!("global_foreign_trade_power")) -
+        //    gamestate.countries[us].overextension_percentage;
 
         // Initialize node information from gamestate.
         let mut merchant_collects = Vec::with_capacity(4);
@@ -113,6 +142,9 @@ impl TradeNetwork {
             println!("  collector_power: {}", gs_node.collector_power);
             println!("  pull_power: {}", gs_node.pull_power);
             let mut total_trade_steer = FixedPoint::ZERO;
+            //let max_p_power = gs_node.country_info
+            //    .iter().map(|(_, x)| x.province_power).max()
+            //    .unwrap_or_default();
             for (tag, country_trade) in &gs_node.country_info {
                 let trade_power = country_trade.val + country_trade.t_in -
                     country_trade.t_out;
@@ -122,6 +154,8 @@ impl TradeNetwork {
                     merchant_type == 1;
                 let collecting = country_trade.has_capital ||
                     (country_trade.has_trader && merchant_type == 0);
+                //let is_domestic = country_trade.has_capital ||
+                //    country_trade.province_power == max_p_power;
 
                 // Calculate steering power
                 if steering {
@@ -148,6 +182,13 @@ impl TradeNetwork {
                             country_trade.money / country_trade.total;
                     }
                     graph[tn_idx].our_trade_power = trade_power;
+                    graph[tn_idx].trade_power_modifier =
+                        country_trade.max_demand;
+                    //if !country_trade.trading_policy.as_ref().is_empty() {
+                    //    graph[tn_idx].trade_power_modifier +=
+                    //        data.trade_policy[&country_trade.trading_policy]
+                    //            .get_trade_power_modifier();
+                    //}
                 }
             }
 
@@ -310,6 +351,7 @@ impl TradeNetwork {
         } else {
             Default::default()
         }) * f64::from(trade_values[node_idx.index()])
+           * f64::from(node.trade_power_modifier)
     }
 
     fn display_dot(&self) {
@@ -337,7 +379,7 @@ impl TradeNetwork {
 }
 
 pub fn optimize_trade(data: &GameData, gamestate: &Gamestate, country: &str) {
-    let tn = TradeNetwork::new(data, gamestate, country);
+    let tn = TradeNetwork::new(data, gamestate, &Eu4Atom::from(country));
     //tn.display_dot();
     let num_nodes = tn.graph.node_count();
     let mut trade_values = vec![Default::default(); num_nodes];

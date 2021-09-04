@@ -36,3 +36,36 @@ pub struct Policy {
 
     #[modifiers] pub modifiers: Modifiers,
 }
+
+#[derive(ParadoxParse, Default)]
+pub struct GovernmentReform {
+    #[optional] icon: String,
+    #[optional] pub modifiers: Modifiers,
+    #[optional] ai: (),
+    #[optional] potential: (),
+    #[optional] conditional: (),
+    #[optional] trigger: (),
+
+    #[optional] allow_normal_conversion: bool,
+    #[optional] allow_convert: bool,
+    #[optional] valid_for_new_country: bool,
+    #[optional] effect: (),
+    #[optional] removed_effect: (),
+    #[optional] post_removed_effect: (),
+    #[optional] lock_level_when_selected: bool,
+    #[optional] legacy_equivalent: Eu4Atom,
+    #[optional] replacement_on_independence_war: Eu4Atom,
+
+    #[optional] valid_for_nation_designer: bool,
+    #[optional] nation_designer_cost: i32,
+    #[optional] nation_designer_trigger: (),
+    #[optional] custom_attributes: (),
+
+    #[optional] assimilation_cultures: (),
+    #[optional] factions: (),
+    #[optional] government_abilities: (),
+    #[optional] states_general_mechanic: (),
+    #[optional] disallowed_trade_goods: (),
+    #[optional] trade_city_reform: String,
+    #[modifiers] effect_modifiers: Modifiers,
+}

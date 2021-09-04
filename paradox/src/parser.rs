@@ -72,13 +72,16 @@ pub struct Parser<'a, G: GameTrait> {
     depth: u32,
     saved_token: Option<Token<G::Static>>,
     game_data: &'a mut crate::GameData,
-    scope: Vec<String>,
+    //scope: Vec<Atom<G::Static>>,
 }
 
 impl <'a, G: GameTrait> Parser<'a, G> {
     pub fn new(lexer: &'a mut dyn Lexer<G>,
                game_data: &'a mut crate::GameData) -> Self {
-        Self { lexer, depth: 0, saved_token: None, game_data, scope: Vec::new() }
+        Self {
+            lexer, depth: 0, saved_token: None, game_data,
+            //scope: Vec::new()
+        }
     }
 
     pub fn parse_key_scope<F>(&mut self, mut func: F) -> Result<()>
@@ -107,10 +110,10 @@ impl <'a, G: GameTrait> Parser<'a, G> {
                 None => return Err(ParseError::Eof),
                 Some(t) => return Err(t.into()),
             }
-            self.scope.push(key.as_ref().into());
+            //self.scope.push(key.clone());
             //println!("Parsing {}", self.scope.join("/"));
             func(key, self)?;
-            self.scope.pop();
+            //self.scope.pop();
         };
         self.depth -= 1;
         match (hit_eof, is_top) {
@@ -129,7 +132,7 @@ impl <'a, G: GameTrait> Parser<'a, G> {
             Some(t) => return Err(t.into()),
         }
         self.depth += 1;
-        self.scope.push("(with_scope)".into());
+        //self.scope.push("(with_scope)".into());
         loop {
             match self.get_token()? {
                 Some(Token::RBrace) => break,
@@ -138,7 +141,7 @@ impl <'a, G: GameTrait> Parser<'a, G> {
             };
             func(self)?;
         }
-        self.scope.pop();
+        //self.scope.pop();
         self.depth -= 1;
         Ok(())
     }
