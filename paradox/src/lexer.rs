@@ -1,7 +1,7 @@
 use byteorder::{ReadBytesExt, LittleEndian};
 use crate::{FixedPoint, GameTrait, ParseError};
 use derivative::Derivative;
-use std::io::Read;
+use std::io::{BufReader, Bytes, Read};
 use std::marker::PhantomData;
 use string_cache::{Atom, StaticAtomSet};
 
@@ -40,7 +40,7 @@ pub trait Lexer<G: GameTrait> {
 }
 
 pub struct TextLexer<R: Read> {
-    reader: std::io::Bytes<R>,
+    reader: Bytes<BufReader<R>>,
     saved_char: Option<u8>,
     filename: String,
     line: u32,
@@ -51,7 +51,9 @@ impl <R: Read> TextLexer<R> {
     /// Create a lexer from the given input file. Pass a filename in as well, to
     /// give better error messages.
     pub fn new(reader: R, filename: String) -> Self {
-        TextLexer { reader: reader.bytes(), filename, line: 1, column: 1,
+        TextLexer {
+            reader: BufReader::new(reader).bytes(),
+            filename, line: 1, column: 1,
             saved_char: None
         }
     }
@@ -158,13 +160,18 @@ impl <G: GameTrait, R: Read> Lexer<G> for TextLexer<R> {
 pub struct BinaryLexer<G: GameTrait, R: Read> {
     filename: String,
     offset: u32,
-    reader: R,
+    reader: BufReader<R>,
     _trait: PhantomData<G>
 }
 
 impl <G: GameTrait, R: Read> BinaryLexer<G, R> {
     pub fn new(reader: R, filename: String) -> Self {
-        BinaryLexer { reader, offset: 0, filename, _trait: PhantomData }
+        BinaryLexer {
+            reader: BufReader::new(reader),
+            offset: 0,
+            filename,
+            _trait: PhantomData
+        }
     }
 
     fn read_token(&mut self) -> Result<Token<G::Static>> {
