@@ -1,6 +1,6 @@
 use crate::*;
 use std::fs::File;
-use std::io::{Read, Seek};
+use std::io::{BufReader, Read, Seek};
 use std::path::Path;
 use string_cache::Atom;
 use zip::{ZipArchive, result::ZipError};
@@ -94,7 +94,7 @@ fn get_lexer<G: 'static + GameTrait>(mut entry: zip::read::ZipFile,
 pub fn load_savegame<G: 'static + GameTrait, T: ParadoxParse<G> + Default>(
     path: &Path, game_data: &mut GameData)
         -> Result<T, ParseError> {
-    let mut archive = ZipArchive::new(File::open(path)?)?;
+    let mut archive = ZipArchive::new(BufReader::new(File::open(path)?))?;
     let mut lexer = ZipLexer::new(&mut archive, path)?;
     let mut gamestate = T::default();
     Parser::new(&mut lexer, game_data).parse(&mut gamestate)?;
