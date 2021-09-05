@@ -14,8 +14,7 @@ fn main() -> Result<(), paradox::ParseError> {
 //        &paradox::get_default_save_dir().join("Europa Universalis IV/save games/Mamluks.eu4"),
         &mut eu4data.base_info
         )?;
-    trade::optimize_trade(&eu4data, &gamestate,
-                          gamestate.player.as_ref());
+    trade::optimize_trade(&eu4data, &gamestate, &gamestate.player);
     // Debugging: trade power for everybody
     //for (tag, country) in &gamestate.countries {
     //    if country.num_of_cities == 0 { continue; }

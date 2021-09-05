@@ -11,7 +11,7 @@ use paradox::{FixedPoint, ParadoxParse, ParseError, Parser};
 pub struct TradeNode {
     location: ProvinceRef,
     #[optional]
-    inland: bool,
+    pub inland: bool,
     #[optional]
     end: bool,
     #[optional]

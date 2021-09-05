@@ -49,6 +49,7 @@ struct SimpleTradeNode {
     has_steering: bool,
     trade_efficiency: FixedPoint,
     trade_power_modifier: FixedPoint,
+    inland: bool,
 }
 
 impl SimpleTradeNode {
@@ -132,6 +133,7 @@ impl TradeNetwork {
                 node.local_trade_value = gs_node.local_value;
                 node.collecting_trade_power = gs_node.collector_power;
                 node.transfer_trade_power = gs_node.pull_power;
+                node.inland = data.trade[&gs_node.definitions].inland;
             }
             let mut total_trade_steer = FixedPoint::ZERO;
             //let max_p_power = gs_node.country_info
@@ -223,6 +225,21 @@ impl TradeNetwork {
             postorder,
             collecting: merchant_collects,
             steering: merchant_steers,
+        }
+    }
+
+    fn adjust_trade(&mut self, node_idx: NodeIndex, trade_power: FixedPoint) {
+        self.graph[node_idx].our_trade_power += trade_power;
+        if self.is_collecting(node_idx) {
+            self.graph[node_idx].collecting_trade_power += trade_power;
+        } else {
+            self.graph[node_idx].transfer_trade_power += trade_power;
+            if let Some(dir) = self.get_steer_direction(node_idx) {
+                let steer_modifier = self.graph[node_idx].our_steer_modifier;
+                let edge_idx = self.graph.find_edge(node_idx, dir).unwrap();
+                self.graph[edge_idx].trade_power_pushing +=
+                    trade_power * steer_modifier;
+            }
         }
     }
 
@@ -362,28 +379,97 @@ impl TradeNetwork {
             .unwrap();
         child.wait().expect("Failed to wait");
     }
+
+    fn compute_trade(&self, trade_values: &mut [FixedPoint],
+                     trade_fractions: &mut [f64],
+                     trade_derivatives: &mut [f64]) {
+        self.compute_trade_values(trade_values);
+        self.compute_trade_fractions(trade_fractions);
+        for node_idx in self.graph.node_indices() {
+            trade_derivatives[node_idx.index()] =
+                self.derivative(node_idx, trade_values, trade_fractions);
+        }
+    }
+
+    fn print_best_nodes(&self, trade_values: &[FixedPoint],
+                        trade_fractions: &[f64], trade_derivatives: &[f64]) {
+        let mut node_indices : Vec<_> = self.graph.node_indices()
+            .map(NodeIndex::index).collect();
+        node_indices.sort_unstable_by(|&b, &a| {
+            trade_derivatives[a].partial_cmp(&trade_derivatives[b]).unwrap()
+        });
+        for i in node_indices {
+            if trade_derivatives[i] < 0.01 { break; }
+            println!("{}: {:.6} (TV: {}, TF: {:.6})", self.names[i],
+                     trade_derivatives[i], trade_values[i], trade_fractions[i]);
+        }
+    }
 }
 
-pub fn optimize_trade(data: &GameData, gamestate: &Gamestate, country: &str) {
-    let tn = TradeNetwork::new(data, gamestate, &Eu4Atom::from(country));
+pub fn optimize_trade(data: &GameData, gamestate: &Gamestate,
+                      country: &Eu4Atom) {
+    let mut tn = TradeNetwork::new(data, gamestate, country);
     //tn.display_dot();
     let num_nodes = tn.graph.node_count();
     let mut trade_values = vec![Default::default(); num_nodes];
     let mut trade_fractions = vec![Default::default(); num_nodes];
-    tn.compute_trade_values(&mut trade_values);
-    tn.compute_trade_fractions(&mut trade_fractions);
     let mut trade_derivatives = vec![Default::default(); num_nodes];
+
+
+    println!("Current trade derivatives:");
+    tn.compute_trade(&mut trade_values, &mut trade_fractions,
+                     &mut trade_derivatives);
+    tn.print_best_nodes(&trade_values, &trade_fractions, &trade_derivatives);
+
+    let modifiers = gamestate.countries[country]
+        .get_modifiers(data, gamestate, country);
+    let mut num_ships = 0;
+    let mut ship_power = FixedPoint::ZERO;
+    for gs_node in &gamestate.trade.node {
+        let name = &gs_node.definitions;
+        let tn_idx = 
+            NodeIndex::new(tn.names.iter().position(|k| k == name).unwrap());
+        for (tag, country_trade) in &gs_node.country_info {
+            if tag == country {
+                num_ships += country_trade.light_ship;
+                ship_power += country_trade.ship_power;
+                tn.adjust_trade(tn_idx, -country_trade.ship_power);
+            }
+        }
+    }
+    ship_power = ship_power / FixedPoint::from(num_ships);
+    println!("{} ships of average {} power each", num_ships, ship_power);
+    println!("global_ship_power: {}",
+             modifiers[&eu4_atom!("global_ship_trade_power")]
+                .as_fixed_point());
+
+    println!("Sans ships:");
+    tn.compute_trade(&mut trade_values, &mut trade_fractions,
+                     &mut trade_derivatives);
+    tn.print_best_nodes(&trade_values, &trade_fractions, &trade_derivatives);
+
+    let mut ship_allocation = vec![0; num_nodes];
+    for _ in 0..num_ships {
+        let best = tn.graph.node_indices()
+            .filter(|&n| !tn.graph[n].inland)
+            .max_by(|&a, &b| trade_derivatives[a.index()]
+                    .partial_cmp(&trade_derivatives[b.index()]).unwrap())
+            .unwrap();
+        ship_allocation[best.index()] += 1;
+        tn.adjust_trade(best, ship_power);
+        tn.compute_trade(&mut trade_values, &mut trade_fractions,
+                         &mut trade_derivatives);
+    }
+
+    println!("Ship allocation:");
     for node_idx in tn.graph.node_indices() {
-        trade_derivatives[node_idx.index()] =
-            tn.derivative(node_idx, &trade_values, &trade_fractions);
+        let ship_count = ship_allocation[node_idx.index()];
+        if ship_count > 0 {
+            println!("Add {} ships to {}", ship_count,
+                     tn.names[node_idx.index()]);
+        }
     }
-    let mut node_indices : Vec<_> = tn.graph.node_indices()
-        .map(NodeIndex::index).collect();
-    node_indices.sort_unstable_by(|&a, &b| {
-        trade_derivatives[a].partial_cmp(&trade_derivatives[b]).unwrap()
-    });
-    for i in node_indices {
-        println!("{}: {:.6} (TV: {}, TF: {:.6})", tn.names[i],
-                 trade_derivatives[i], trade_values[i], trade_fractions[i]);
-    }
+
+    println!("Post allocation:");
+    tn.print_best_nodes(&trade_values, &trade_fractions, &trade_derivatives);
 }
